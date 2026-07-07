@@ -31,6 +31,8 @@ class LeadRepository:
         """
         Convert a scraped job dictionary into a Lead ORM object.
         """
+        
+        email_guesses = job.get("recruiter", {}).get("emailGuesses", [])
 
         return Lead(
             job_id=job["jobId"],
@@ -41,9 +43,11 @@ class LeadRepository:
             platform="LinkedIn",
             description=job.get("description"),
             skills=", ".join(job.get("skills", [])),
-            email=None,
+            email=email_guesses[0] if email_guesses else None,
             email_verified=False,
             status=LeadStatus.NEW,
+            metadata_info=job,
+            email_status="FOUND" if email_guesses else "PENDING",
         )
 
 #    create 
@@ -52,9 +56,9 @@ class LeadRepository:
         job: dict[str, Any],
     ) -> Lead:
         """
-        Save a single lead.
+        Save a single lead. 
         """
-
+        
         if self.job_exists(job["jobId"]):
             raise ValueError(
                 f"Lead already exists : {job['jobId']}"
@@ -176,3 +180,117 @@ class LeadRepository:
         return True
     
     
+
+# ------------------------------------------------------------------
+# Connect Workflow
+# ------------------------------------------------------------------
+
+    def get_pending_connections(
+        self,
+    ) -> list[Lead]:
+        """
+        Return all leads that still need email enrichment.
+        """
+
+        stmt = (
+            select(Lead)
+            .where(Lead.email_status == "PENDING")
+        )
+
+        return list(self.db.scalars(stmt).all())
+
+
+    def update_company_domain(
+        self,
+        lead_id: int,
+        company_domain: str,
+    ) -> bool:
+        """
+        Update company domain.
+        """
+
+        lead = self.db.get(Lead, lead_id)
+
+        if lead is None:
+            return False
+
+        lead.company_domain = company_domain
+
+        self.db.commit()
+
+        return True
+
+
+    def update_email(
+        self,
+        lead_id: int,
+        email: str,
+        verified: bool = False,
+    ) -> bool:
+        """
+        Update lead email.
+        """
+
+        lead = self.db.get(Lead, lead_id)
+
+        if lead is None:
+            return False
+
+        lead.email = email
+        lead.email_verified = verified
+        lead.email_status = "FOUND"
+
+        self.db.commit()
+
+        return True
+
+
+    def update_status(
+        self,
+        lead_id: int,
+        status: LeadStatus,
+    ) -> bool:
+        """
+        Update lead status.
+        """
+
+        lead = self.db.get(Lead, lead_id)
+
+        if lead is None:
+            return False
+
+        lead.status = status
+
+        self.db.commit()
+
+        return True
+
+
+    def update_contact(
+        self,
+        lead_id: int,
+        company_domain: str,
+        email: str,
+        email_verified: bool = False,
+    ) -> bool:
+        """
+        Update all enrichment fields in a single transaction.
+        """
+
+        lead = self.db.get(Lead, lead_id)
+
+        if lead is None:
+            return False
+
+        lead.company_domain = company_domain
+        lead.email = email
+        lead.email_verified = email_verified
+        lead.email_status = "FOUND"
+
+        self.db.commit()
+
+        return True
+
+
+
+

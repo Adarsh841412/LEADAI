@@ -27,7 +27,7 @@ url_object = URL.create(
 
 #  Create SQLite Engine
 
-engine = create_engine(url_object,echo=True)
+engine = create_engine(url_object)
 
 # Create Session
 
@@ -45,7 +45,7 @@ def init_db() -> None:
     Create all database tables.
     """
     from database.models import Lead
-
+    # Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
 
 
@@ -65,5 +65,6 @@ def get_db() -> Session:
         finally:
             db.close()
     """
+
     return SessionLocal()
 
