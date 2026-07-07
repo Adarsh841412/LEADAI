@@ -290,6 +290,29 @@ class LeadRepository:
         self.db.commit()
 
         return True
+    
+    
+    # outreach workflow 
+    def get_pending_outreach(
+    self,
+) -> list[Lead]:
+        """
+        Return all leads that are ready for outreach.
+
+        Conditions:
+        - Email has been enriched.
+        - Email exists.
+        """
+
+        stmt = (
+            select(Lead)
+            .where(
+                Lead.email_status == "FOUND",
+                Lead.email.is_not(None),
+            )
+        )
+
+        return list(self.db.scalars(stmt).all())
 
 
 
