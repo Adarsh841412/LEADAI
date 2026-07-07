@@ -1,5 +1,6 @@
 from datetime import date, datetime, time
 import enum
+from sqlalchemy.dialects.postgresql import JSONB
 
 from sqlalchemy import (
     Boolean,
@@ -27,6 +28,13 @@ class LeadStatus(str, enum.Enum):
 
 
 
+class EmailStatus(str,enum.Enum):
+    PENDING = "PENDING"
+    FOUND = "FOUND"
+    VERIFIED = "VERIFIED"
+    NOT_FOUND = "NOT_FOUND"
+    FAILED = "FAILED"
+    
 class MeetingStatus(str, enum.Enum):
     SCHEDULED = "SCHEDULED"
     COMPLETED = "COMPLETED"
@@ -100,14 +108,17 @@ class Lead(Base):
         default=False,
         nullable=False,
     )
-
+    email_status:Mapped[EmailStatus | None ] = mapped_column(Enum(EmailStatus),default = EmailStatus.PENDING,nullable=False)
  
     status: Mapped[LeadStatus] = mapped_column(
         Enum(LeadStatus),
         default=LeadStatus.NEW,
         nullable=False,
     )
-
+    company_domain: Mapped[str | None] = mapped_column(
+    String(255),
+    nullable=True,
+)
   
     thread_id: Mapped[str | None] = mapped_column(
         String(255),
@@ -171,6 +182,8 @@ class Lead(Base):
         onupdate=func.now(),
         nullable=False,
     )
+    metadata_info:Mapped[dict]=mapped_column(JSONB,nullable=True)
+    
 
   
     def __repr__(self) -> str:
