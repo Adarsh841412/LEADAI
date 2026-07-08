@@ -8,9 +8,8 @@ from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
 from database.models import Lead, LeadStatus
-
+from datetime import datetime
 
 class LeadRepository:
     """
@@ -237,7 +236,7 @@ class LeadRepository:
             return False
 
         lead.email = email
-        lead.email_verified = verified
+        lead.email_verified = True
         lead.email_status = "FOUND"
 
         self.db.commit()
@@ -293,6 +292,7 @@ class LeadRepository:
     
     
     # outreach workflow 
+    
     def get_pending_outreach(
     self,
 ) -> list[Lead]:
@@ -309,11 +309,29 @@ class LeadRepository:
             .where(
                 Lead.email_status == "FOUND",
                 Lead.email.is_not(None),
+                Lead.status != 'OUTREACH_SENT'
             )
         )
 
         return list(self.db.scalars(stmt).all())
 
+    # update table after sending outreach 
+    
+    def update_after_send(self,lead_id:str,thread_id:str,message_id:str):
+        
+        lead = self.db.get(Lead,lead_id)
+        lead.message_id = message_id
+        lead.thread_id = thread_id 
+        lead.status = LeadStatus.OUTREACH_SENT
+        lead.last_contact_at = datetime.utcnow() 
+        lead.followup_count = 0 
+        
+        self.db.commit() 
+        return True 
+    
+        
+        
+    
 
 
 

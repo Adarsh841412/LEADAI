@@ -1,6 +1,6 @@
 import os
 from typing import Any
-
+import re
 from langchain_groq import ChatGroq
 
 from config.settings import XAI_API_KEY
@@ -57,9 +57,10 @@ class LlmService:
                 }
             )
 
+
             return {
                 "subject": response.subject,
-                "email_body": response.email_message,
+                "email_body": response.email_message
             }
 
         except Exception as e:
