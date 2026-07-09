@@ -1,7 +1,8 @@
 from typing import Any
 from apify_client import ApifyClient
 import requests
-
+from providers.bright_data import run_bright_data,convert_brightdata_to_apify
+import json 
 from config.settings import (
     APIFY_BASE_URL,
     APIFY_TIMEOUT,
@@ -69,22 +70,35 @@ class ApifyProvider:
     ) -> list[dict[str, Any]]:
         """
         Fetch jobs from Apify.
+        
         """
+        inp = input("press 1 to get data from apify\npress 2 to get data from bright data\n")
+        
+        if inp.strip() == "1":
+            payload = self._build_payload(
+                job_title=job_title,
+                location=location,
+            )
 
-        payload = self._build_payload(
-            job_title=job_title,
-            location=location,
-        )
+            run =  self._send_request(
+                payload=payload
+            )
+            dataset_id = run.default_dataset_id
+            dataset_items = []
+            client = ApifyClient(APIFY_TOKEN)   
+            for item in client.dataset(dataset_id).iterate_items():
+                dataset_items.append(item)
+            return dataset_items 
+        
+        elif inp.strip() == "2":
+            data = run_bright_data(job_title,location)
+            data = json.loads(data)
+            dataset_items = convert_brightdata_to_apify(data)
+            print("screaped by adarsh")
+            print(dataset_items)
+            return dataset_items
+            
 
-        run =  self._send_request(
-            payload=payload
-        )
-        dataset_id = run.default_dataset_id
-        dataset_items = []
-        client = ApifyClient(APIFY_TOKEN)   
-        for item in client.dataset(dataset_id).iterate_items():
-             dataset_items.append(item)
-        return dataset_items     
 
 
         

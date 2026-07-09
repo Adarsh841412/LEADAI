@@ -10,7 +10,7 @@ def main():
     if flow_number == '1':
         workflow = LeadWorkflow(
         job_title="Python Developer",
-        location="India",
+        location="canada",
     )
 
         result = workflow.run()
@@ -34,3 +34,4 @@ def main():
        
     
 main() 
+
