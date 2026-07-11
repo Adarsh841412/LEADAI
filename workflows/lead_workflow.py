@@ -11,7 +11,7 @@ class LeadWorkflow:
         # step1 scrapte the job 
         
         jobs = ScraperService.scrape_jobs(self.job_title,self.location)
-        print("this is jobs",jobs)
+        # print("this is jobs",jobs)
         # step2 open database session 
         
         db = get_db() 

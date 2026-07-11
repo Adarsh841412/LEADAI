@@ -39,7 +39,7 @@ class LeadRepository:
             job_title=job["title"],
             location=job.get("location"),
             job_url=job["jobUrl"],
-            platform="LinkedIn",
+            platform=job.get('platform','linkedin'),
             description=job.get("description"),
             skills=", ".join(job.get("skills", [])),
             email=email_guesses[0] if email_guesses else None,

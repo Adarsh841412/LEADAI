@@ -90,15 +90,29 @@ class ApifyProvider:
                 dataset_items.append(item)
             return dataset_items 
         
+        
+        # *hanlde bright data 
         elif inp.strip() == "2":
-            data = run_bright_data(job_title,location)
-            data = json.loads(data)
+            data = run_bright_data(job_title, location)   # already parsed: list[dict] or dict, NOT a str
+    
+            if data is None:
+                print("No data returned from Bright Data.")
+                return []
+    
+        # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+        
+            if isinstance(data, dict):
+                data = [data]          # wrap single dict into a list
+            elif not isinstance(data, list):
+                print("Unexpected data type:", type(data))
+                return []
+        
             dataset_items = convert_brightdata_to_apify(data)
-            print("screaped by adarsh")
+            print("scraped by adarsh")
             print(dataset_items)
             return dataset_items
+                
+
+
+
             
-
-
-
-        
