@@ -317,11 +317,12 @@ class LeadRepository:
 
     # update table after sending outreach 
     
-    def update_after_send(self,lead_id:str,thread_id:str,message_id:str):
+    def update_after_send(self,lead_id:str,thread_id:str,message_id:str,rfc_message_id:str):
         
         lead = self.db.get(Lead,lead_id)
         lead.message_id = message_id
         lead.thread_id = thread_id 
+        lead.rfc_message_id = rfc_message_id
         lead.status = LeadStatus.OUTREACH_SENT
         lead.last_contact_at = datetime.utcnow() 
         lead.followup_count = 0 
@@ -329,9 +330,70 @@ class LeadRepository:
         self.db.commit() 
         return True 
     
-        
-        
     
+    
+    # * fllow up workflow 
+    
+    def get_pending_followups(self)->list[Lead]:
+        """
+        it will find all the lead that sent the pitch alreay 
+        having follow_up count < 3
+        last_contact <=3 days ago 
+        
+        
+        """
+        stmt = select(Lead).where(Lead.status == LeadStatus.OUTREACH_SENT,Lead.replied == False) # later i add floowupcount and last contact at 
+        return list(self.db.scalars(stmt).all())
+        
+        
+    def mark_as_replied(self,lead_id:int)->bool:
+        
+        """
+        marks the replies that get the reply from the client
+        """
+        
+        lead = self.db.get(Lead,lead_id)
+        if lead is None :
+            print('no pending lead exit')
+            return None 
+        
+        lead.status == LeadStatus.REPLIED 
+        lead.replied = True 
+        self.db.commit()
+        return True 
+        
+        
+        
+        
+    def update_after_followup(
+    self,
+    lead_id: int,
+    thread_id: str,
+    message_id: str,
+    rfc_message_id:str
+) -> bool:
+        """
+        Update lead after sending a follow-up email.
+        """
 
+        lead = self.db.get(Lead, lead_id)
 
+        if lead is None:
 
+            print("Lead not found.")
+
+            return False
+
+        lead.status = LeadStatus.FOLLOWUP_SENT
+        lead.followup_count += 1
+        lead.last_contact_at = datetime.utcnow()
+        lead.thread_id = thread_id
+        lead.message_id = message_id
+        lead.rfc_message_id = rfc_message_id
+
+        self.db.commit()
+
+        return True
+    
+    
+    

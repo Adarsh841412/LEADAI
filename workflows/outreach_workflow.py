@@ -3,7 +3,7 @@ from database.repository import LeadRepository
 from services.llm_service import LlmService
 from services.resume_selector import ResumeSelector
 from services.gmail_service import GmailService
-
+from  prompts.pitch_prompt import parser,prompt 
 class OutreachWorkflow:
 
     def __init__(self) -> None:
@@ -14,7 +14,7 @@ class OutreachWorkflow:
 
         self.resume_selector = ResumeSelector()
 
-        self.llm_service = LlmService()
+        self.llm_service = LlmService(prompt,parser)
 
         self.gmail_service = GmailService()
 
@@ -40,6 +40,7 @@ class OutreachWorkflow:
             resume = self.resume_selector.select_best_resume(
                 lead.description
             )
+        
 
             print(
                 f"[Resume] {lead.company} -> "
@@ -87,6 +88,7 @@ class OutreachWorkflow:
                 lead_id=lead.id,
                 thread_id=gmail_response["thread_id"],
                 message_id=gmail_response["message_id"],
+                rfc_message_id = gmail_response['rfc_message_id']
             )
 
             sent_emails.append(
