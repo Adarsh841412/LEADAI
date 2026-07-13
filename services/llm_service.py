@@ -1,21 +1,16 @@
 import os
 from typing import Any
-import re
 from langchain_groq import ChatGroq
-
 from config.settings import XAI_API_KEY
-from prompts.pitch_prompt import prompt, parser
-
-
 os.environ["GROQ_API_KEY"] = XAI_API_KEY.strip()
-print(XAI_API_KEY)
+
 
 class LlmService:
     """
     Generates outreach emails.
     """
 
-    def __init__(self) -> None:
+    def __init__(self,prompt,parser) -> None:
 
         self.model = ChatGroq(
             model="llama-3.3-70b-versatile",
@@ -24,7 +19,9 @@ class LlmService:
             api_key=XAI_API_KEY,
         )
 
-        self.chain = prompt | self.model | parser
+        self.chain = prompt | self.model | parser 
+
+
 
     def email_generator(
         self,
@@ -32,6 +29,7 @@ class LlmService:
     ) -> dict[str, str] | None:
         """
         Generate an outreach email for a lead.
+        Generate an follow up email for a lead 
 
         Returns:
             {
@@ -43,21 +41,35 @@ class LlmService:
         company = lead.get("company", "")
         job_title = lead.get("job_title", "")
         description = lead.get("description", "")
-
+        previous_email = lead.get("previous_email")
+        previous_subject = lead.get("previous_subject")
+        
+    
         if not description:
             return None
+        
+        
+        payload = {
+            "company": company,
+            "job_title": job_title,
+            "description": description,
+}
+
+        if previous_email:
+            payload["previous_email"] = previous_email
+
+        if previous_subject:
+            payload["previous_subject"] = previous_subject
+
+
 
         try:
+            
+            
 
-            response = self.chain.invoke(
-                {
-                    "company": company,
-                    "job_title": job_title,
-                    "description": description,
-                }
-            )
+            response = self.chain.invoke(payload)
 
-
+    
             return {
                 "subject": response.subject,
                 "email_body": response.email_message
@@ -69,18 +81,3 @@ class LlmService:
 
             return None
 
-
-# llm = LlmService()
-
-# lead = {
-#         "company": "Stripe",
-#         "job_title": "Python Backend Engineer",
-#         "description": """
-#         Looking for an experienced Python developer with FastAPI,
-#         PostgreSQL, Docker and AWS experience.
-#         """,
-#     }
-
-# email = llm.email_generator(lead)
-
-# print(email)

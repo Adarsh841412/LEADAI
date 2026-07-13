@@ -335,7 +335,7 @@ def trigger_brightdata_job_scrape(job_title: str, location: str):
       a) a single JSON object with a snapshot_id -> still processing, need to poll
       b) multiple JSON objects concatenated by newlines (NDJSON) -> data ready immediately
     """
-    url = "https://api.brightdata.com/datasets/v3/scrape?dataset_id=gd_lpfll7v5hcqtkxl6l&type=discover_new&discover_by=keyword&limit_per_input=20"
+    url = "https://api.brightdata.com/datasets/v3/scrape?dataset_id=gd_lpfll7v5hcqtkxl6l&type=discover_new&discover_by=keyword&limit_per_input=10"
     payload = {
         "input": [
             {

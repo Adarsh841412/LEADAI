@@ -118,7 +118,12 @@ class Lead(Base):
     company_domain: Mapped[str | None] = mapped_column(
     String(255),
     nullable=True,
-)
+)   
+    
+    rfc_message_id :Mapped[str|None] = mapped_column(
+        String(255),
+        nullable=True
+    )
   
     thread_id: Mapped[str | None] = mapped_column(
         String(255),
