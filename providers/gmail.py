@@ -251,6 +251,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build, HttpError
 from email.utils import parseaddr #(it parse name and email from your class str from i use it in reply_check)
 
+
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.send",
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -406,7 +407,7 @@ class Gmail:
         self,
         thread_id: str,
     ):
-
+        
         """_summary_
            on the basis of the last message i decide it sent by clien or me 
         """
