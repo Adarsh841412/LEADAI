@@ -234,9 +234,9 @@ class FollowUpWorkflow:
 
                 replied_leads += 1
 
-                self.repository.mark_as_replied(
-                    lead.id
-                )
+                # self.repository.mark_as_replied(
+                #     lead.id
+                # )
 
                 print("✓ Reply received")
 
@@ -260,7 +260,7 @@ class FollowUpWorkflow:
 
                     previous_subject = header["value"]
 
-                    break
+                    # break
 
             payload = {
                 "company": lead.company,
@@ -343,7 +343,3 @@ class FollowUpWorkflow:
 
         print("=" * 60)
 
-
-
-f1 = FollowUpWorkflow() 
-f1.run() 

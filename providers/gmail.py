@@ -249,6 +249,7 @@ from pathlib import Path
 from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build, HttpError
+from email.utils import parseaddr #(it parse name and email from your class str from i use it in reply_check)
 
 
 SCOPES = [
@@ -406,6 +407,10 @@ class Gmail:
         self,
         thread_id: str,
     ):
+        
+        """_summary_
+           on the basis of the last message i decide it sent by clien or me 
+        """
 
         try:
 
@@ -425,9 +430,25 @@ class Gmail:
                 "messages",
                 [],
             )
+            
+            " "
+            from_email = ""
+            last_message = messages[-1]
+            headers = last_message["payload"]["headers"]
+            for header in headers:
+                if header["name"] == "From":
+                    from_email = header["value"]
+                    break
 
+            # * this we modifed later ok now we give value manully 
+            name,email = parseaddr(from_email)
+            replied = False 
+            
+            if email != 'adarsh.dubey@skedgroup.in':
+                replied = True 
+                
             return {
-                "replied": len(messages) > 1,
+                "replied": replied,
                 "message_count": len(messages),
                 "messages": messages,
             }

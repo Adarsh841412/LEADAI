@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 from database.models import Lead, LeadStatus
 from datetime import datetime
-
+from sqlalchemy import or_
 class LeadRepository:
     """
     Repository responsible for all Lead database operations.
@@ -342,9 +342,22 @@ class LeadRepository:
         
         
         """
-        stmt = select(Lead).where(Lead.status == LeadStatus.OUTREACH_SENT,Lead.replied == False) # later i add floowupcount and last contact at 
+        from sqlalchemy import or_
+
+        stmt = (
+            select(Lead)
+            .where(
+                or_(
+                    Lead.status == LeadStatus.OUTREACH_SENT,
+                    Lead.status == LeadStatus.FOLLOWUP_SENT,
+                ),
+                Lead.replied.is_(False),
+                Lead.followup_count < 3,
+            )
+        )
+
         return list(self.db.scalars(stmt).all())
-        
+                
         
     def mark_as_replied(self,lead_id:int)->bool:
         
@@ -394,6 +407,21 @@ class LeadRepository:
         self.db.commit()
 
         return True
+    
+    
+    
+    # reply workflow 
+    
+    def get_lead_to_check_reply(self)->list[Lead]:
+        
+        """
+        Return all leads whose Gmail thread should be checked
+        for a recruiter reply.
+        """
+        
+        stmt = select(Lead).where(Lead.thread_id.is_not(None),Lead.thread_id != '' , Lead.replied == False)
+        return list(self.db.scalars(stmt).all())
+    
     
     
     
