@@ -345,5 +345,3 @@ class FollowUpWorkflow:
 
 
 
-f1 = FollowUpWorkflow() 
-f1.run() 
