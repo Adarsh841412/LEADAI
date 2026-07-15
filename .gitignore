@@ -14,4 +14,7 @@ __pycache__/
 
 # OS
 .DS_Store
+
+# file 
 token.json
+test.ipynb

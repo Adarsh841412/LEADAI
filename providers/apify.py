@@ -1,7 +1,8 @@
 from typing import Any
 from apify_client import ApifyClient
 import requests
-
+from providers.bright_data import run_bright_data,convert_brightdata_to_apify
+import json 
 from config.settings import (
     APIFY_BASE_URL,
     APIFY_TIMEOUT,
@@ -69,22 +70,49 @@ class ApifyProvider:
     ) -> list[dict[str, Any]]:
         """
         Fetch jobs from Apify.
-        """
-
-        payload = self._build_payload(
-            job_title=job_title,
-            location=location,
-        )
-
-        run =  self._send_request(
-            payload=payload
-        )
-        dataset_id = run.default_dataset_id
-        dataset_items = []
-        client = ApifyClient(APIFY_TOKEN)   
-        for item in client.dataset(dataset_id).iterate_items():
-             dataset_items.append(item)
-        return dataset_items     
-
-
         
+        """
+        inp = input("press 1 to get data from apify\npress 2 to get data from bright data\n")
+        
+        if inp.strip() == "1":
+            payload = self._build_payload(
+                job_title=job_title,
+                location=location,
+            )
+
+            run =  self._send_request(
+                payload=payload
+            )
+            dataset_id = run.default_dataset_id
+            dataset_items = []
+            client = ApifyClient(APIFY_TOKEN)   
+            for item in client.dataset(dataset_id).iterate_items():
+                dataset_items.append(item)
+            return dataset_items 
+        
+        
+        # *hanlde bright data 
+        elif inp.strip() == "2":
+            data = run_bright_data(job_title, location)   # already parsed: list[dict] or dict, NOT a str
+    
+            if data is None:
+                print("No data returned from Bright Data.")
+                return []
+    
+        # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+        
+            if isinstance(data, dict):
+                data = [data]          # wrap single dict into a list
+            elif not isinstance(data, list):
+                print("Unexpected data type:", type(data))
+                return []
+        
+            dataset_items = convert_brightdata_to_apify(data)
+            print("scraped by adarsh")
+            print(dataset_items)
+            return dataset_items
+                
+
+
+
+            

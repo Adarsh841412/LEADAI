@@ -1,0 +1,16 @@
+{
+  "searchQuery": "software engineer",
+  "location": "United States",
+  "experienceLevel": "any",
+  "jobType": "any",
+  "datePosted": "past_week",
+  "remoteOnly": false,
+  "maxResults": 50,
+  "includeRecruiterEnrichment": true,
+  "proxyConfiguration": {
+    "useApifyProxy": true,
+    "apifyProxyGroups": [
+      "RESIDENTIAL"
+    ]
+  }
+}
