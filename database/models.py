@@ -153,6 +153,13 @@ class Lead(Base):
         default=False,
         nullable=False,
     )
+    
+    conversation_processed: Mapped[bool] = mapped_column(
+    Boolean,
+    default=False,
+    nullable=False,
+)
+    
 
     reply_received_at: Mapped[datetime | None] = mapped_column(
         DateTime,

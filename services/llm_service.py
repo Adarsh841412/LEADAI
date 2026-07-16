@@ -18,7 +18,7 @@ class LlmService:
             max_tokens=600,
             api_key=XAI_API_KEY,
         )
-
+        
         self.chain = prompt | self.model | parser 
 
 
@@ -26,6 +26,7 @@ class LlmService:
     def email_generator(
         self,
         lead: dict[str, Any],
+        k:int=0
     ) -> dict[str, str] | None:
         """
         Generate an outreach email for a lead.
@@ -44,6 +45,36 @@ class LlmService:
         previous_email = lead.get("previous_email")
         previous_subject = lead.get("previous_subject")
         
+        # this subject and email belongs to conversation  workflow  (k==1 means it will call by conversation )
+
+        subject = lead.get("subject")
+        email=lead.get("email")
+        
+        
+        if k==1:
+            if not subject:
+                print("subject is not available ")
+                return None
+            if not email:
+                print("email is not available")
+                return None
+            
+            
+            try:
+                response = self.chain.invoke(lead)
+                return response
+            
+            except Exception as e:
+                print("error happened in LLM ", e)
+            
+            
+            
+            
+            
+            
+            
+            
+            
     
         if not description:
             return None
@@ -68,8 +99,6 @@ class LlmService:
             
 
             response = self.chain.invoke(payload)
-
-    
             return {
                 "subject": response.subject,
                 "email_body": response.email_message

@@ -509,6 +509,7 @@ class Gmail:
             )
             
             # Fetch RFC Message-ID
+            
             metadata = (
                 service.users()
                 .messages()
@@ -546,8 +547,86 @@ class Gmail:
             return None
 
 
+#   * conversation workflow part 
 
+    def get_latest_recruiter_message(
+    self,
+    thread_id: str,
+) -> dict | None:
+        """
+        Returns the latest recruiter email from a Gmail thread.
 
+        Returns:
+        {
+            "from": "...",
+            "subject": "...",
+            "snippet": "...",
+            "message": {...}
+        }
+        """
 
+        try:
 
+            service = self.get_gmail_service()
 
+            thread = (
+                service.users()
+                .threads()
+                .get(
+                    userId="me",
+                    id=thread_id,
+                )
+                .execute()
+            )
+
+            messages = thread.get("messages", [])
+
+            if not messages:
+
+                print("No messages found in this thread.")
+
+                return None
+
+            # Last message in the thread
+            last_message = messages[-1]
+
+            headers = last_message["payload"]["headers"]
+
+            from_email = ""
+            subject = ""
+
+            for header in headers:
+
+                if header["name"] == "From":
+
+                    from_email = header["value"]
+
+                elif header["name"] == "Subject":
+
+                    subject = header["value"]
+
+            name, email = parseaddr(from_email)
+
+            # Ensure the latest message is from the recruiter
+            if email == "adarsh.dubey@skedgroup.in":
+
+                print("Latest message is from yourself.")
+
+                return None
+            
+            return {
+                "from": email,
+                "subject": subject,
+                "snippet": last_message.get("snippet", ""),
+                "message": last_message,
+            }
+        
+        except HttpError as e:
+
+            print(f"Gmail Error: {e}")
+
+            return None
+        
+        
+# g1 = Gmail() 
+# print(g1.get_latest_recruiter_message('19f6448893893bff')        )

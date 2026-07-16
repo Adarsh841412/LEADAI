@@ -60,7 +60,6 @@ class OutreachWorkflow:
             email_content = self.llm_service.email_generator(
                 payload
             )
-
             if email_content is None:
                 print(
                     f"Failed to generate email for {lead.company}"
