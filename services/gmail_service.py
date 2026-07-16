@@ -101,3 +101,27 @@ class GmailService:
             print(f"Follow-up email failed: {e}")
 
             return None
+        
+        
+            
+    # for conversation flow 
+        
+    def get_latest_recruiter_message(
+        self,
+        thread_id: str,
+    ):
+        """
+        Returns the latest recruiter message from a Gmail thread.
+        """
+
+        try:
+
+            return self.gmail.get_latest_recruiter_message(
+                thread_id
+            )
+
+        except Exception as e:
+
+            print(f"Gmail Service Error: {e}")
+
+            return None

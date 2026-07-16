@@ -423,5 +423,14 @@ class LeadRepository:
         return list(self.db.scalars(stmt).all())
     
     
+    # * meeting workflow 
     
-    
+    def get_pending_conversation(self)->list[Lead]:
+        """
+        Return all leads whose recruiter has replied
+        but whose conversation has not yet been processed.
+        """
+        
+        stmt = select(Lead).where(Lead.replied==True,Lead.conversation_processed == False)
+        return list(self.db.scalars(stmt).all())
+        
