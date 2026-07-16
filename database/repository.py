@@ -342,46 +342,6 @@ class LeadRepository:
         
         
         """
-<<<<<<< HEAD
-        stmt = select(Lead).where(Lead.status == LeadStatus.OUTREACH_SENT,Lead.replied == False) # later i add floowupcount and last contact at 
-        return list(self.db.scalars(stmt).all())
-        
-        
-    def mark_as_replied(self,lead_id:int)->bool:
-        
-        """
-        marks the replies that get the reply from the client
-        """
-        
-        lead = self.db.get(Lead,lead_id)
-        if lead is None :
-            print('no pending lead exit')
-            return None 
-        
-        lead.status == LeadStatus.REPLIED 
-        lead.replied = True 
-        self.db.commit()
-        return True 
-        
-        
-        
-        
-    def update_after_followup(
-    self,
-    lead_id: int,
-    thread_id: str,
-    message_id: str,
-    rfc_message_id:str
-) -> bool:
-        """
-        Update lead after sending a follow-up email.
-        """
-
-        lead = self.db.get(Lead, lead_id)
-
-        if lead is None:
-
-=======
         from sqlalchemy import or_
 
         stmt = (
@@ -433,7 +393,6 @@ class LeadRepository:
 
         if lead is None:
 
->>>>>>> master
             print("Lead not found.")
 
             return False
@@ -450,8 +409,6 @@ class LeadRepository:
         return True
     
     
-<<<<<<< HEAD
-=======
     
     # reply workflow 
     
@@ -467,5 +424,4 @@ class LeadRepository:
     
     
     
->>>>>>> master
     
