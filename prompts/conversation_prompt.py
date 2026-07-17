@@ -1,54 +1,88 @@
-from langchain_core.prompts import PromptTemplate 
-from langchain_core.output_parsers import PydanticOutputParser 
-from pydantic import BaseModel,Field 
-from langchain_core.prompts import PromptTemplate
-
-from pydantic import BaseModel, Field
 from typing import Optional
+
+from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.prompts import PromptTemplate
+from pydantic import BaseModel, Field
 
 
 class ConversationResponse(BaseModel):
 
+    # --------------------------------------------------
+    # Intent
+    # --------------------------------------------------
+
     intent: str = Field(
-        description="MEETING, QUESTION, ASSESSMENT, GENERAL_REPLY, REJECTION or UNKNOWN."
+        description="One of: MEETING, QUESTION, ASSESSMENT, GENERAL_REPLY, REJECTION, UNKNOWN."
     )
+
+    # --------------------------------------------------
+    # Meeting
+    # --------------------------------------------------
 
     meeting_date: Optional[str] = Field(
         default=None,
-        description="Interview date if available."
+        description="Meeting or interview date exactly as mentioned by the recruiter."
     )
 
     meeting_time: Optional[str] = Field(
         default=None,
-        description="Interview time if available."
+        description="Meeting time exactly as mentioned by the recruiter. If a time range is provided, return the complete range exactly as written."
     )
 
     timezone: Optional[str] = Field(
         default=None,
-        description="Meeting timezone if available."
+        description="Meeting timezone exactly as mentioned by the recruiter."
     )
+
+    meeting_link: Optional[str] = Field(
+        default=None,
+        description="Video meeting URL if present (Google Meet, Microsoft Teams, Zoom, Webex, etc.)."
+    )
+
+    meeting_platform: Optional[str] = Field(
+        default=None,
+        description="Meeting platform if identifiable (Google Meet, Microsoft Teams, Zoom, Webex, Phone, etc.)."
+    )
+
+    # --------------------------------------------------
+    # Assessment
+    # --------------------------------------------------
+
+    assessment_link: Optional[str] = Field(
+        default=None,
+        description="Assessment URL if present."
+    )
+
+    assessment_deadline: Optional[str] = Field(
+        default=None,
+        description="Assessment deadline exactly as mentioned."
+    )
+
+    # --------------------------------------------------
+    # Conversation
+    # --------------------------------------------------
 
     reply_required: bool = Field(
-        description="Whether the recruiter expects a response."
+        description="Whether the recruiter expects a reply."
     )
 
 
-
-
-parser = PydanticOutputParser(pydantic_object=ConversationResponse) 
+parser = PydanticOutputParser(
+    pydantic_object=ConversationResponse
+)
 
 
 prompt = PromptTemplate(
     template="""
 You are an AI Recruitment Conversation Analyzer.
 
-Your job is to analyze the latest email received from a recruiter.
+Your task is to analyze ONLY the latest recruiter email from an ongoing hiring conversation.
 
-The email belongs to an ongoing hiring conversation.
+Ignore all previous emails, quoted replies, forwarded messages, signatures, and email history.
 
------------------------------
+========================================================
 Recruiter Email
------------------------------
+========================================================
 
 Subject:
 {subject}
@@ -56,13 +90,13 @@ Subject:
 Email:
 {email}
 
------------------------------
-Your Tasks
------------------------------
+========================================================
+Task 1 — Intent Classification
+========================================================
 
-1. Determine the primary intent of the recruiter.
+Choose EXACTLY ONE intent.
 
-Choose ONLY ONE of the following intents:
+Allowed values:
 
 - MEETING
 - QUESTION
@@ -71,93 +105,298 @@ Choose ONLY ONE of the following intents:
 - REJECTION
 - UNKNOWN
 
-Definitions:
+Definitions
 
 MEETING
-The recruiter is scheduling, confirming, rescheduling, or discussing an interview or meeting.
+
+The recruiter is:
+
+- scheduling an interview
+- confirming an interview
+- rescheduling an interview
+- cancelling an interview
+- sharing interview logistics
+- sending interview instructions
 
 QUESTION
-The recruiter is asking for information such as:
+
+The recruiter asks the candidate for information.
+
+Examples:
+
 - Notice period
+- Current salary
+- Expected salary
 - Current CTC
 - Expected CTC
 - Years of experience
 - Availability
-- Location
+- Current location
 - Visa status
-- Any direct question requiring a response.
+- Portfolio
+- Resume
+- Any direct question requiring a response
 
 ASSESSMENT
-The recruiter is asking the candidate to complete:
-- Coding test
-- Online assessment
+
+The recruiter asks the candidate to complete:
+
 - HackerRank
-- Take-home assignment
-- Technical challenge
+- Codility
+- HackerEarth
+- CodeSignal
+- TestDome
+- Mercer Mettl
+- Technical Assessment
+- Coding Challenge
+- Online Test
+- Take-home Assignment
 
 GENERAL_REPLY
-A normal recruiter reply that does not require meeting extraction.
+
+General recruiter communication.
 
 Examples:
+
 - Thank you.
-- We will review your profile.
-- We'll get back to you soon.
+- We received your application.
+- We'll review your profile.
+- We'll contact you soon.
+- Thanks for your interest.
 
 REJECTION
-The recruiter has rejected the application.
+
+The recruiter informs the candidate that they are no longer being considered.
 
 UNKNOWN
-The email does not clearly belong to any category.
 
------------------------------
-Meeting Extraction
------------------------------
+The email cannot be confidently classified.
 
-If the intent is MEETING, extract:
+========================================================
+Task 2 — Meeting Extraction
+========================================================
+
+ONLY if intent == MEETING.
+
+Extract:
 
 - meeting_date
 - meeting_time
 - timezone
+- meeting_link
+- meeting_platform
 
-If they are not mentioned,
+Rules
+
+Return values EXACTLY as written.
+
+Do NOT normalize.
+
+Examples
+
+Date
+
+Tuesday, 28 July 2026
+
+Return
+
+meeting_date = "Tuesday, 28 July 2026"
+
+----------------------------------------
+
+28 July 2026
+
+Return
+
+meeting_date = "28 July 2026"
+
+----------------------------------------
+
+Time
+
+3:30 PM – 4:00 PM
+
+Return
+
+meeting_time = "3:30 PM – 4:00 PM"
+
+----------------------------------------
+
+10:00 AM
+
+Return
+
+meeting_time = "10:00 AM"
+
+----------------------------------------
+
+Timezone
+
+Asia/Kolkata (IST)
+
+Return
+
+timezone = "Asia/Kolkata (IST)"
+
+----------------------------------------
+
+Google Meet
+
+Join Google Meet
+
+https://meet.google.com/abc-defg-hij
+
+Return
+
+meeting_platform = "Google Meet"
+
+meeting_link = "https://meet.google.com/abc-defg-hij"
+
+----------------------------------------
+
+Microsoft Teams
+
+Join Microsoft Teams Meeting
+
+https://teams.microsoft.com/l/meetup-join/...
+
+Return
+
+meeting_platform = "Microsoft Teams"
+
+meeting_link = "https://teams.microsoft.com/l/meetup-join/..."
+
+----------------------------------------
+
+Zoom
+
+https://zoom.us/j/123456789
+
+Return
+
+meeting_platform = "Zoom"
+
+meeting_link = "https://zoom.us/j/123456789"
+
+----------------------------------------
+
+Phone Interview
+
+"We will call you on your registered mobile number."
+
+Return
+
+meeting_platform = "Phone"
+
+meeting_link = null
+
+----------------------------------------
+
+If any meeting field is unavailable,
+
 return null.
 
------------------------------
-Reply Required
------------------------------
+Never invent a meeting link.
 
-Determine whether the recruiter expects a reply.
+Never generate a URL.
 
-Return:
+========================================================
+Task 3 — Assessment Extraction
+========================================================
 
-true
+ONLY if intent == ASSESSMENT.
 
-or
+Extract
 
-false
+- assessment_link
+- assessment_deadline
 
-Examples:
+Rules
 
-Question
+Return values exactly as written.
+
+The assessment link should point to the assessment platform.
+
+Examples include
+
+- HackerRank
+- Codility
+- HackerEarth
+- CodeSignal
+- TestDome
+- Mercer Mettl
+- Qualified.io
+
+Never confuse an assessment URL with a meeting URL.
+
+If unavailable,
+
+return null.
+
+========================================================
+Task 4 — Reply Required
+========================================================
+
+Return true ONLY if the recruiter expects the candidate to respond.
+
+Examples
+
+QUESTION
+
 → true
 
-Meeting Confirmation
-→ false
+----------------------------------------
 
-General acknowledgement
-→ false
+ASSESSMENT
 
-Assessment invitation
 → true
 
------------------------------
-Important Rules
------------------------------
+----------------------------------------
 
-- Analyze ONLY the recruiter's email.
+MEETING REQUEST
+
+"Please confirm your availability."
+
+→ true
+
+----------------------------------------
+
+MEETING CONFIRMATION
+
+"Your interview has been scheduled."
+
+→ false
+
+----------------------------------------
+
+GENERAL_REPLY
+
+→ false
+
+----------------------------------------
+
+REJECTION
+
+→ false
+
+========================================================
+Rules
+========================================================
+
+- Analyze ONLY the latest recruiter email.
+- Ignore quoted emails.
+- Ignore previous conversation.
 - Never invent information.
-- Never guess missing meeting details.
-- If a value is unavailable, return null.
+- Never infer missing values.
+- Never guess dates.
+- Never guess meeting times.
+- Never guess timezones.
+- Never guess URLs.
+- Never create meeting links.
+- Never create assessment links.
+- Extract URLs exactly as written.
+- Do not confuse assessment links with meeting links.
+- If a field is unavailable, return null.
 - Return ONLY the structured output.
 - Do not explain your reasoning.
 
@@ -171,5 +410,3 @@ Important Rules
         "format_instructions": parser.get_format_instructions(),
     },
 )
-
-

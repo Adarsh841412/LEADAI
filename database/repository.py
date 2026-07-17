@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 from database.models import Lead, LeadStatus
 from datetime import datetime
 from sqlalchemy import or_
+from database.models import MeetingStatus
+
+
 class LeadRepository:
     """
     Repository responsible for all Lead database operations.
@@ -434,3 +437,128 @@ class LeadRepository:
         stmt = select(Lead).where(Lead.replied==True,Lead.conversation_processed == False)
         return list(self.db.scalars(stmt).all())
         
+        
+    # *conversation workflow 
+    
+    def save_meeting(
+    self,
+    lead_id: int,
+    meeting,
+) -> bool:
+        """
+        Save extracted meeting details.
+        """
+
+        lead = self.db.get(Lead, lead_id)
+
+        if lead is None:
+
+            print("Lead not found.")
+
+            return False
+    
+        lead.meeting_date = meeting.get('meeting_date')
+        lead.meeting_time = meeting.get('meeting_time')
+        lead.meeting_status = MeetingStatus.SCHEDULED
+        lead.timezone = meeting.get('timezone')
+        lead.meeting_platform = meeting.get('meeting_platform')
+        lead.meeting_link = meeting.get('meeting_link')
+
+        # If you have this column
+        lead.conversation_processed = True
+
+        self.db.commit()
+
+        return True
+    
+
+
+    def update_after_conversation(
+        self,
+        lead_id: int,
+        thread_id: str,
+        message_id: str,
+        rfc_message_id: str,
+    ) -> bool:
+        """
+        Update lead after sending a conversation reply.
+
+        Updates:
+            - thread_id
+            - message_id
+            - rfc_msg_id
+            - last_contact_at
+            - conversation_processed
+        """
+
+        lead = self.db.get(Lead, lead_id)
+
+        if lead is None:
+
+            print("Lead not found.")
+
+            return False
+
+        lead.thread_id = thread_id
+        lead.message_id = message_id
+        lead.rfc_msg_id = rfc_message_id
+        lead.last_contact_at = datetime.utcnow()
+
+        # Prevent processing the same conversation again
+        lead.conversation_processed = True
+
+        self.db.commit()
+
+        return True
+    
+    
+    
+    def mark_rejected(
+    self,
+    lead_id: int,
+) -> bool:
+
+        lead = (
+            self.db.query(Lead)
+            .filter(Lead.id == lead_id)
+            .first()
+        )
+
+        if lead is None:
+            return False
+
+        lead.status = LeadStatus.REJECTED
+        lead.conversation_processed = True
+        lead.last_contact_at = datetime.now()
+
+        self.db.commit()
+
+        return True
+    
+
+
+    def mark_manual_review(
+        self,
+        lead_id: int,
+    ) -> bool:
+        """
+        Mark a lead for manual review when the conversation
+        could not be classified confidently.
+        """
+
+        lead = (
+            self.db.query(Lead)
+            .filter(Lead.id == lead_id)
+            .first()
+        )
+
+        if lead is None:
+            return False
+
+        lead.manual_review = True
+        lead.conversation_processed = True
+        lead.last_contact_at = datetime.now()
+
+        self.db.commit()
+
+        return True

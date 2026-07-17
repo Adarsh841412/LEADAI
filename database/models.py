@@ -12,6 +12,7 @@ from sqlalchemy import (
     Text,
     Time,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 from database.db import Base
@@ -25,6 +26,7 @@ class LeadStatus(str, enum.Enum):
     FOLLOWUP_SENT = "FOLLOWUP_SENT"
     REPLIED = "REPLIED"
     MEETING_SCHEDULED = "MEETING_SCHEDULED"
+    REJECTED="REJECTED"
 
 
 
@@ -181,7 +183,11 @@ class Lead(Base):
         Enum(MeetingStatus),
         nullable=True,
     )
-
+    
+    timezone:Mapped[str|None]=mapped_column(String(50),nullable=True)
+    meeting_link = mapped_column(Text, nullable=True)
+    meeting_platform = mapped_column(Text,nullable=True)
+    
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         server_default=func.now(),
@@ -193,6 +199,13 @@ class Lead(Base):
         server_default=func.now(),
         onupdate=func.now(),
         nullable=False,
+    )
+ 
+    manual_review: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default=text("false"),
     )
     metadata_info:Mapped[dict]=mapped_column(JSONB,nullable=True)
     

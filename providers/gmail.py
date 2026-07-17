@@ -250,6 +250,10 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build, HttpError
 from email.utils import parseaddr #(it parse name and email from your class str from i use it in reply_check)
+import base64
+import re
+from email_reply_parser import EmailReplyParser
+
 
 
 SCOPES = [
@@ -289,6 +293,46 @@ class Gmail:
     def __init__(self):
 
         self.scopes = SCOPES
+        
+        
+        
+        
+        
+        
+    def extract_email_body(
+    self,
+    message: dict,
+) -> str:
+        """
+        Extract plain-text email body from a Gmail message.
+        """
+
+        payload = message.get("payload", {})
+
+        # Simple message
+        body = payload.get("body", {})
+
+        if body.get("data"):
+
+            return base64.urlsafe_b64decode(
+                body["data"]
+            ).decode("utf-8")
+
+        # Multipart message
+        for part in payload.get("parts", []):
+
+            if part.get("mimeType") == "text/plain":
+
+                data = part["body"].get("data")
+
+                if data:
+
+                    return base64.urlsafe_b64decode(
+                        data
+                    ).decode("utf-8")
+
+        return ""
+    
 
     def get_gmail_service(self):
 
@@ -549,6 +593,8 @@ class Gmail:
 
 #   * conversation workflow part 
 
+
+
     def get_latest_recruiter_message(
     self,
     thread_id: str,
@@ -614,13 +660,20 @@ class Gmail:
 
                 return None
             
+            
+            body = self.extract_email_body(last_message)
+            latest_reply = EmailReplyParser.parse_reply(body)
+
+            
+            
             return {
                 "from": email,
                 "subject": subject,
-                "snippet": last_message.get("snippet", ""),
+                "snippet": last_message["snippet"],
+                "body": latest_reply,
                 "message": last_message,
-            }
-        
+    }
+            
         except HttpError as e:
 
             print(f"Gmail Error: {e}")
