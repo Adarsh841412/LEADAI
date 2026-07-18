@@ -1,10 +1,10 @@
 from database.db import get_db
 from database.repository import LeadRepository
-
 from services.gmail_service import GmailService
 from services.llm_service import LlmService
 from services.meeting_service import MeetingService
 from prompts.conversation_prompt import prompt, parser
+from services.assessment_service import AssessmentService
 
 class ConversationWorkflow:
 
@@ -20,6 +20,7 @@ class ConversationWorkflow:
              prompt,
               parser,
         )
+        self.assessment_service = AssessmentService()
 
         self.meeting_service = MeetingService()
 
@@ -179,15 +180,28 @@ class ConversationWorkflow:
 #             # CASE 3 : ASSESSMENT
 #             # =====================================================
 
-#             elif intent == "ASSESSMENT":
+            elif intent == "ASSESSMENT":
 
-#                 print("Assessment detected.")
+                print("Assessment detected.")
 
-#                 # TODO
-#                 # self.repository.save_assessment(...)
+                assessment = self.assessment_service.validate_assessment(
+                    assessment_link=analysis.assessment_link,
+                    assessment_deadline=analysis.assessment_deadline,
+                )
 
-#                 print("Assessment stored.")
+                if assessment is None:
+                    print("Invalid assessment information.")
+                    continue
 
+                response = self.repository.save_assessment(
+                    lead_id=lead.id,
+                    assessment=assessment,
+                )
+
+                if response:
+                    print("Assessment stored successfully.")
+                else:
+                    print("Assessment not stored.")
 #             # =====================================================
 #             # CASE 4 : GENERAL_REPLY
 #             # =====================================================
@@ -266,17 +280,14 @@ class ConversationWorkflow:
                 else:
                     print("Failed to mark lead for manual review.")
 
-#         # ---------------------------------------------------------
-#         # Step 3 : Summary
-#         # ---------------------------------------------------------
+        # ---------------------------------------------------------
+        # Step 3 : Summary
+        # ---------------------------------------------------------
 
-#         print("\n" + "=" * 60)
-#         print("Conversation Workflow Completed")
-#         print("=" * 60)
-#         print(f"Checked Conversations : {checked}")
-#         print("=" * 60)
+        print("\n" + "=" * 60)
+        print("Conversation Workflow Completed")
+        print("=" * 60)
+        print(f"Checked Conversations : {checked}")
+        print("=" * 60)
 
 
-workflow = ConversationWorkflow()
-
-workflow.run()

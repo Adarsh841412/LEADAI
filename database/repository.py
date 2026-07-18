@@ -562,3 +562,27 @@ class LeadRepository:
         self.db.commit()
 
         return True
+    
+    
+    
+    # * for assesment 
+    def save_assessment(self, lead_id: str, assessment: dict):
+
+        try :
+            lead = self.db.get(Lead, lead_id)
+
+            if lead is None:
+                print("Lead not found.")
+                return False
+
+            lead.assessment_link = assessment["assessment_link"]
+            lead.assessment_deadline = assessment["assessment_deadline"]
+            lead.status = LeadStatus.ASSESSMENT_PENDING
+
+            self.db.commit()
+
+            return True
+        except Exception as e:
+            print("errorin db ",e)
+           
+    

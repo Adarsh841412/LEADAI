@@ -1,67 +1,85 @@
-# from workflows.lead_workflow import LeadWorkflow
-# from workflows.connect_workflow import ConnectWorkflow
-# from workflows.outreach_workflow import OutreachWorkflow
-# from workflows.replyworkflow import ReplyWorkflow
-# from workflows.followup_workflow import FollowUpWorkflow
+from workflows.lead_workflow import LeadWorkflow
+from workflows.connect_workflow import ConnectWorkflow
+from workflows.outreach_workflow import OutreachWorkflow
+from workflows.replyworkflow import ReplyWorkflow
+from workflows.followup_workflow import FollowUpWorkflow
+from workflows.conversation_workflow import ConversationWorkflow
 
 
-# def main():
+def main():
 
-#     print("\n" + "=" * 55)
-#     print("           LEAD AI AUTOMATION")
-#     print("=" * 55)
-#     print("1. Lead Workflow")
-#     print("2. Connect Workflow")
-#     print("3. Outreach Workflow")
-#     print("4. Reply Workflow")
-#     print("5. Follow-up Workflow")
-#     print("=" * 55)
+    print("\n" + "=" * 60)
+    print("                 LEAD AI AUTOMATION")
+    print("=" * 60)
+    print("1. Lead Workflow")
+    print("2. Connect Workflow")
+    print("3. Outreach Workflow")
+    print("4. Reply Workflow")
+    print("5. Follow-up Workflow")
+    print("6. Conversation Workflow")
+    print("=" * 60)
 
-#     flow_number = input("Select Workflow: ").strip()
+    flow_number = input("Select Workflow: ").strip()
 
-#     if flow_number == "1":
+    if flow_number == "1":
 
-#         workflow = LeadWorkflow(
-#             job_title="Python Developer",
-#             location="USA",
-#         )
+        workflow = LeadWorkflow(
+            job_title="Python Developer",
+            location="USA",
+        )
 
-#         workflow.run()
+        workflow.run()
 
-#     elif flow_number == "2":
+    elif flow_number == "2":
 
-#         workflow = ConnectWorkflow()
+        workflow = ConnectWorkflow()
 
-#         workflow.run()
+        workflow.run()
 
-#     elif flow_number == "3":
+    elif flow_number == "3":
 
-#         workflow = OutreachWorkflow()
+        workflow = OutreachWorkflow()
 
-#         workflow.run()
+        workflow.run()
 
-#     elif flow_number == "4":
+    elif flow_number == "4":
 
-#         workflow = ReplyWorkflow()
+        workflow = ReplyWorkflow()
 
-#         workflow.run()
+        workflow.run()
 
-#     elif flow_number == "5":
+    elif flow_number == "5":
 
-#         workflow = FollowUpWorkflow()
+        workflow = FollowUpWorkflow()
 
-#         workflow.run()
+        workflow.run()
 
-#     else:
+    elif flow_number == "6":
 
-#         print("❌ Invalid workflow selected.")
+        workflow = ConversationWorkflow()
+
+        workflow.run()
+
+    else:
+
+        print("\n❌ Invalid workflow selected.")
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()  
 
 
-from  workflows.conversation_workflow import *
+
+
+
+
+
+
+
+
+
+
+
 
 
 # from providers.gmail import *
