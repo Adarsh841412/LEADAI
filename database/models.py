@@ -25,9 +25,9 @@ class LeadStatus(str, enum.Enum):
     OUTREACH_SENT = "OUTREACH_SENT"
     FOLLOWUP_SENT = "FOLLOWUP_SENT"
     REPLIED = "REPLIED"
+    ASSESSMENT_PENDING = "ASSESSMENT_PENDING"
     MEETING_SCHEDULED = "MEETING_SCHEDULED"
-    REJECTED="REJECTED"
-
+    REJECTED = "REJECTED"
 
 
 class EmailStatus(str,enum.Enum):
@@ -184,6 +184,14 @@ class Lead(Base):
         nullable=True,
     )
     
+    
+    
+    
+    assesment_link:Mapped[str]=mapped_column(String(255),nullable=True)
+    assessment_deadline:Mapped[date|None] = mapped_column(Date,nullable=True)
+    
+    
+    
     timezone:Mapped[str|None]=mapped_column(String(50),nullable=True)
     meeting_link = mapped_column(Text, nullable=True)
     meeting_platform = mapped_column(Text,nullable=True)
@@ -209,7 +217,7 @@ class Lead(Base):
     )
     metadata_info:Mapped[dict]=mapped_column(JSONB,nullable=True)
     
-
+    
   
     def __repr__(self) -> str:
         return (
