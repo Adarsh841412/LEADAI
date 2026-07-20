@@ -317,14 +317,3 @@ class ResumeSelector:
         selector = cls()
 
         return selector._score_resume(description)
-
-# r1 = ResumeSelector() 
-
-
-# description = """
-# We are looking for a Python Developer with FastAPI,
-# PostgreSQL, Docker, SQLAlchemy and AWS experience.
-# """
-
-# resume = ResumeSelector.select_best_resume(description)
-# print(resume)

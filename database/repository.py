@@ -85,6 +85,7 @@ class LeadRepository:
         Returns:
             Number of newly inserted leads.
         """
+        
 
         lead_objects: list[Lead] = []
 
@@ -100,13 +101,17 @@ class LeadRepository:
         if not lead_objects:
             return 0
 
-        self.db.bulk_save_objects(
+        try :
+            self.db.bulk_save_objects(
             lead_objects
         )
 
-        self.db.commit()
+            self.db.commit()
 
-        return len(lead_objects)
+            return len(lead_objects)
+        except Exception :
+            self.db.rollback() 
+            raise 
 
     # check existence of jobs
     
@@ -193,13 +198,17 @@ class LeadRepository:
         """
         Return all leads that still need email enrichment.
         """
+        try:
 
-        stmt = (
-            select(Lead)
-            .where(Lead.email_status == "PENDING")
-        )
+            stmt = (
+                select(Lead)
+                .where(Lead.email_status == "PENDING")
+            )
 
-        return list(self.db.scalars(stmt).all())
+            return list(self.db.scalars(stmt).all())
+        except Exception as e:
+            print("error in get pending connection repository",e)
+            return []
 
 
     def update_company_domain(
@@ -210,19 +219,23 @@ class LeadRepository:
         """
         Update company domain.
         """
+        
+        try : 
+            lead = self.db.get(Lead, lead_id)
 
-        lead = self.db.get(Lead, lead_id)
+            if lead is None:
+                return False
 
-        if lead is None:
-            return False
+            lead.company_domain = company_domain
 
-        lead.company_domain = company_domain
+            self.db.commit()
 
-        self.db.commit()
+            return True
 
-        return True
-
-
+        except Exception as e:
+            self.db.rollback() 
+            raise 
+        
     def update_email(
         self,
         lead_id: int,
@@ -278,21 +291,24 @@ class LeadRepository:
         """
         Update all enrichment fields in a single transaction.
         """
+        try :
 
-        lead = self.db.get(Lead, lead_id)
+            lead = self.db.get(Lead, lead_id)
 
-        if lead is None:
-            return False
+            if lead is None:
+                return False
 
-        lead.company_domain = company_domain
-        lead.email = email
-        lead.email_verified = email_verified
-        lead.email_status = "FOUND"
+            lead.company_domain = company_domain
+            lead.email = email
+            lead.email_verified = email_verified
+            lead.email_status = "FOUND"
 
-        self.db.commit()
+            self.db.commit()
 
-        return True
-    
+            return True
+        except Exception as e:
+            self.db.rollback() 
+            raise 
     
     # outreach workflow 
     
@@ -306,33 +322,44 @@ class LeadRepository:
         - Email has been enriched.
         - Email exists.
         """
-
-        stmt = (
-            select(Lead)
-            .where(
-                Lead.email_status == "FOUND",
-                Lead.email.is_not(None),
-                Lead.status != 'OUTREACH_SENT'
+        try :
+            stmt = (
+                select(Lead)
+                .where(
+                    Lead.email_status == "FOUND",
+                    Lead.email.is_not(None),
+                    Lead.status != 'OUTREACH_SENT'
+                )
             )
-        )
 
-        return list(self.db.scalars(stmt).all())
+            return list(self.db.scalars(stmt).all())
+        except Exception as e :
+            print("Error getting pending outreach:", e)
+            return []
 
     # update table after sending outreach 
     
     def update_after_send(self,lead_id:str,thread_id:str,message_id:str,rfc_message_id:str):
+        try :
+            lead = self.db.get(Lead,lead_id)
+            if lead is None:
+                return False 
+            lead.message_id = message_id
+            lead.thread_id = thread_id 
+            lead.rfc_message_id = rfc_message_id
+            lead.status = LeadStatus.OUTREACH_SENT
+            lead.last_contact_at = datetime.utcnow() 
+            lead.followup_count = 0 
+            
+            self.db.commit() 
+            return True 
+        except Exception as e:
+            self.db.rollback() 
+            print("Error occured in update after send",e)
+            return False 
         
-        lead = self.db.get(Lead,lead_id)
-        lead.message_id = message_id
-        lead.thread_id = thread_id 
-        lead.rfc_message_id = rfc_message_id
-        lead.status = LeadStatus.OUTREACH_SENT
-        lead.last_contact_at = datetime.utcnow() 
-        lead.followup_count = 0 
         
-        self.db.commit() 
-        return True 
-    
+        
     
     
     # * fllow up workflow 
@@ -346,21 +373,23 @@ class LeadRepository:
         
         """
         from sqlalchemy import or_
-
-        stmt = (
-            select(Lead)
-            .where(
-                or_(
-                    Lead.status == LeadStatus.OUTREACH_SENT,
-                    Lead.status == LeadStatus.FOLLOWUP_SENT,
-                ),
-                Lead.replied.is_(False),
-                Lead.followup_count < 3,
+        try : 
+            stmt = (
+                select(Lead)
+                .where(
+                    or_(
+                        Lead.status == LeadStatus.OUTREACH_SENT,
+                        Lead.status == LeadStatus.FOLLOWUP_SENT,
+                    ),
+                    Lead.replied.is_(False),
+                    Lead.followup_count < 3,
+                )
             )
-        )
 
-        return list(self.db.scalars(stmt).all())
-                
+            return list(self.db.scalars(stmt).all())
+        except Exception as e:
+            print('error in peding followups',e)
+            return []         
         
     def mark_as_replied(self,lead_id:int)->bool:
         
@@ -368,16 +397,22 @@ class LeadRepository:
         marks the replies that get the reply from the client
         """
         
-        lead = self.db.get(Lead,lead_id)
-        if lead is None :
-            print('no pending lead exit')
-            return None 
+        try :
         
-        lead.status == LeadStatus.REPLIED 
-        lead.replied = True 
-        self.db.commit()
-        return True 
-        
+            lead = self.db.get(Lead,lead_id)
+            if lead is None :
+                print('no pending lead exit')
+                return False
+            
+            lead.status = LeadStatus.REPLIED 
+            lead.replied = True 
+            self.db.commit()
+            return True 
+            
+        except Exception as e:
+            print("error occured while marks as replied",e) 
+            self.db.rollback() 
+            return False     
         
         
         
@@ -391,27 +426,30 @@ class LeadRepository:
         """
         Update lead after sending a follow-up email.
         """
+        try :
+            lead = self.db.get(Lead, lead_id)
 
-        lead = self.db.get(Lead, lead_id)
+            if lead is None:
 
-        if lead is None:
+                print("Lead not found.")
 
-            print("Lead not found.")
+                return False
 
-            return False
+            lead.status = LeadStatus.FOLLOWUP_SENT
+            lead.followup_count += 1
+            lead.last_contact_at = datetime.utcnow()
+            lead.thread_id = thread_id
+            lead.message_id = message_id
+            lead.rfc_message_id = rfc_message_id
 
-        lead.status = LeadStatus.FOLLOWUP_SENT
-        lead.followup_count += 1
-        lead.last_contact_at = datetime.utcnow()
-        lead.thread_id = thread_id
-        lead.message_id = message_id
-        lead.rfc_message_id = rfc_message_id
+            self.db.commit()
 
-        self.db.commit()
-
-        return True
-    
-    
+            return True
+        except Exception :
+            self.db.rollback() 
+            raise 
+        
+        
     
     # reply workflow 
     
@@ -421,10 +459,13 @@ class LeadRepository:
         Return all leads whose Gmail thread should be checked
         for a recruiter reply.
         """
+        try :
+            stmt = select(Lead).where(Lead.thread_id.is_not(None),Lead.thread_id != '' , Lead.replied == False)
+            return list(self.db.scalars(stmt).all())
+        except Exception as e:
+            print("error occured in get_lead_to_check_reply",e)
+            return []
         
-        stmt = select(Lead).where(Lead.thread_id.is_not(None),Lead.thread_id != '' , Lead.replied == False)
-        return list(self.db.scalars(stmt).all())
-    
     
     # * meeting workflow 
     
@@ -433,9 +474,13 @@ class LeadRepository:
         Return all leads whose recruiter has replied
         but whose conversation has not yet been processed.
         """
+        try :
         
-        stmt = select(Lead).where(Lead.replied==True,Lead.conversation_processed == False)
-        return list(self.db.scalars(stmt).all())
+            stmt = select(Lead).where(Lead.replied==True,Lead.conversation_processed == False)
+            return list(self.db.scalars(stmt).all())
+        except Exception as e:
+            print('error occured in get pending conversation',e)
+            return []
         
         
     # *conversation workflow 
@@ -490,27 +535,32 @@ class LeadRepository:
             - last_contact_at
             - conversation_processed
         """
+        try :
 
-        lead = self.db.get(Lead, lead_id)
+            lead = self.db.get(Lead, lead_id)
 
-        if lead is None:
+            if lead is None:
 
-            print("Lead not found.")
+                print("Lead not found.")
 
-            return False
+                return False
 
-        lead.thread_id = thread_id
-        lead.message_id = message_id
-        lead.rfc_msg_id = rfc_message_id
-        lead.last_contact_at = datetime.utcnow()
+            lead.thread_id = thread_id
+            lead.message_id = message_id
+            lead.rfc_msg_id = rfc_message_id
+            lead.last_contact_at = datetime.utcnow()
 
-        # Prevent processing the same conversation again
-        lead.conversation_processed = True
+            # Prevent processing the same conversation again
+            lead.conversation_processed = True
 
-        self.db.commit()
+            self.db.commit()
 
-        return True
-    
+            return True
+        except Exception as e:
+            self.db.rollback() 
+            print("error occured in update after conversation")
+            return False 
+      
     
     
     def mark_rejected(
@@ -584,5 +634,8 @@ class LeadRepository:
             return True
         except Exception as e:
             print("errorin db ",e)
+            self.db.rollback() 
+            return False 
+            
            
     

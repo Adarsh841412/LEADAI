@@ -27,84 +27,98 @@ class OutreachWorkflow:
         """
 
         sent_emails = []
-
-        leads = self.repository.get_pending_outreach()
-        if not leads:
-            print("No leads available for outreach.")
-            return []
-
-        for lead in leads:
-
-            # select resume 
-
-            resume = self.resume_selector.select_best_resume(
-                lead.description
-            )
         
+        try : 
 
-            print(
-                f"[Resume] {lead.company} -> "
-                f"{resume['resume_name']} "
-                f"(Score : {resume['score']})"
-            )
+            leads = self.repository.get_pending_outreach()
+            if not leads:
+                print("No leads available for outreach.")
+                return []
 
-            # geneate email  
-            
-            payload = {
-                "company": lead.company,
-                "job_title": lead.job_title,
-                "description": lead.description,
-                "resume_name": resume["resume_name"],
-            }
+            for lead in leads:
 
-            email_content = self.llm_service.email_generator(
-                payload
-            )
-            if email_content is None:
-                print(
-                    f"Failed to generate email for {lead.company}"
+                # select resume 
+
+                resume = self.resume_selector.select_best_resume(
+                    lead.description
                 )
-                continue
+                if resume is None:
+                    print(f"No resume found for {lead.company}")
+                    continue
 
-            # send email 
-            gmail_response = self.gmail_service.send_email(
-                recipient='adarshdubeyv@gmail.com',
-                subject=email_content["subject"],
-                body=email_content["email_body"],
-                resume_path=resume["resume_path"],
-            )
-
-            if gmail_response is None:
                 print(
-                    f"Failed to send email to {lead.email}"
+                    f"[Resume] {lead.company} -> "
+                    f"{resume['resume_name']} "
+                    f"(Score : {resume['score']})"
                 )
-                continue
 
-        
-            # Update Database
-            
-            self.repository.update_after_send(
-                lead_id=lead.id,
-                thread_id=gmail_response["thread_id"],
-                message_id=gmail_response["message_id"],
-                rfc_message_id = gmail_response['rfc_message_id']
-            )
-
-            sent_emails.append(
-                {
-                    "lead_id": lead.id,
-                    "recipient": lead.email,
+                # geneate email  
+                
+                payload = {
                     "company": lead.company,
-                    "subject": email_content["subject"],
-                    "resume": resume["resume_name"],
-                    "thread_id": gmail_response["thread_id"],
-                    "message_id": gmail_response["message_id"],
+                    "job_title": lead.job_title,
+                    "description": lead.description,
+                    "resume_name": resume["resume_name"],
                 }
-            )
 
-            print(f"Email sent to {lead.email}")
+                email_content = self.llm_service.email_generator(
+                    payload
+                )
+                if email_content is None:
+                    print(
+                        f"Failed to generate email for {lead.company}"
+                    )
+                    continue
 
-        return sent_emails
+                # send email 
+                gmail_response = self.gmail_service.send_email(
+                    recipient='adarshdubeyv@gmail.com',
+                    subject=email_content["subject"],
+                    body=email_content["email_body"],
+                    resume_path=resume["resume_path"],
+                )
+
+                if gmail_response is None:
+                    print(
+                        f"Failed to send email to {lead.email}"
+                    )
+                    continue
+
+            
+                # Update Database
+                
+                updated = self.repository.update_after_send(
+                    lead_id=lead.id,
+                    thread_id=gmail_response["thread_id"],
+                    message_id=gmail_response["message_id"],
+                    rfc_message_id=gmail_response["rfc_message_id"],
+                )
+
+                if not updated:
+                    print(f"Failed to update database for lead {lead.id}")
+                    continue
+                
+                
+                sent_emails.append(
+                    {
+                        "lead_id": lead.id,
+                        "recipient": lead.email,
+                        "company": lead.company,
+                        "subject": email_content["subject"],
+                        "resume": resume["resume_name"],
+                        "thread_id": gmail_response["thread_id"],
+                        "message_id": gmail_response["message_id"],
+                    }
+                )
+
+                print(f"Email sent to {lead.email}")
+
+            return sent_emails
+        except Exception as e:
+            print("Error happened in OutreachWorkflow:", e)
+            return []
+        finally :
+            self.db.close() 
     
     
 

@@ -35,59 +35,69 @@ class ConnectWorkflow:
         failed = 0
 
         # Leads without email
-     
-        leads = self.repository.get_pending_connections()
-        print(leads)
-        if not leads:
-            return {
-                "processed": 0,
-                "success": 0,
-                "failed": 0,
-            }
+        try :
+            
+            leads = self.repository.get_pending_connections()
+            print(leads)
+            if not leads:
+                return {
+                    "processed": 0,
+                    "success": 0,
+                    "failed": 0,
+                }
 
-        for lead in leads:
+            for lead in leads:
 
-            processed += 1
+                processed += 1
 
-            try:
+                try:
 
-                enriched = self.connect_service.enrich_lead(
-                    {
-                        "company": lead.company,
-                        "location": lead.location,
-                    }
-                )
+                    enriched = self.connect_service.enrich_lead(
+                        {
+                            "company": lead.company,
+                            "location": lead.location,
+                        }
+                    )
 
-                if not enriched:
+                    if not enriched:
+                        failed += 1
+                        continue
+            
+            
+                    self.repository.update_company_domain(
+                        lead.id,
+                        enriched["company_domain"],
+                    )
+
+                    self.repository.update_contact(
+                        lead_id = lead.id,
+                        company_domain=enriched['company_domain'],
+                        email=enriched["email"],
+                        email_verified=False,
+                    )
+
+                    success += 1
+
+                except Exception as e:
+
+                    print(e)
+
                     failed += 1
-                    continue
-           
-           
-                self.repository.update_company_domain(
-                    lead.id,
-                    enriched["company_domain"],
-                )
 
-                self.repository.update_contact(
-                    lead_id = lead.id,
-                    company_domain=enriched['company_domain'],
-                    email=enriched["email"],
-                    email_verified=False,
-                )
+            return {
+                "processed": processed,
+                "success": success,
+                "failed": failed,
+            }
+        except Exception as e:
+            print("error at connect workflow",e)
+        
+        finally :
+            self.db.close() 
+            
 
-                success += 1
 
-            except Exception as e:
 
-                print(e)
-
-                failed += 1
-
-        return {
-            "processed": processed,
-            "success": success,
-            "failed": failed,
-        }
 
 
 

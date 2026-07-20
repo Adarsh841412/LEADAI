@@ -52,11 +52,10 @@ class ScraperService:
             )
         except Exception as e:
             print(e)
-            return 
+            return []
             
         
         jobs = JobFilter.filter_recent_tech_jobs(jobs)
-
         jobs = JobValidator.validate_jobs(jobs)
 
         jobs = JobDeduplicator.remove_duplicates(jobs)
