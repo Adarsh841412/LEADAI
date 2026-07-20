@@ -53,7 +53,6 @@ class ApifyProvider:
         """
         Send request to Apify API.
         """
-        print(self.api_token)
         client = ApifyClient(self.api_token)   
         run_input = payload
         run = client.actor(ACTOR_ID).call(run_input=run_input)
@@ -72,7 +71,12 @@ class ApifyProvider:
         Fetch jobs from Apify.
         
         """
-        inp = input("press 1 to get data from apify\npress 2 to get data from bright data\n")
+        while True :
+            inp = input("press 1 to get data from apify\npress 2 to get data from bright data\n")
+            if inp.strip() in ("1", "2"):
+                break
+            else :
+                print("it is invalid selection try again ")
         
         if inp.strip() == "1":
             payload = self._build_payload(
@@ -85,7 +89,7 @@ class ApifyProvider:
             )
             dataset_id = run.default_dataset_id
             dataset_items = []
-            client = ApifyClient(APIFY_TOKEN)   
+            client = ApifyClient(self.api_token)   
             for item in client.dataset(dataset_id).iterate_items():
                 dataset_items.append(item)
             return dataset_items 

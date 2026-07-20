@@ -69,7 +69,7 @@ class ConnectService:
         # -------------------------------------------------
         # Step 2 : Search Emails
         # -------------------------------------------------
-
+        
         hunter_response = self.hunter_provider.domain_search(
             domain=company_domain,
         )

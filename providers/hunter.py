@@ -52,7 +52,8 @@ class HunterProvider:
             return response.json()
 
         except requests.RequestException:
-            raise
+            print('error occured in domain search')
+            return None 
 
     def verify_email(
         self,
@@ -84,6 +85,7 @@ class HunterProvider:
             return response.json()
 
         except requests.RequestException:
+            print("Error during Hunter domain search")
             return None
 
 

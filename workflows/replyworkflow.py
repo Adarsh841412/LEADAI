@@ -12,50 +12,62 @@ class ReplyWorkflow:
         self.gmail_service = GmailService()
 
     def run(self):
+        try : 
+            pending_leads = self.repository.get_lead_to_check_reply()
 
-        pending_leads = self.repository.get_lead_to_check_reply()
+            if not pending_leads:
 
-        if not pending_leads:
+                print("No pending replies to check.")
+                return
 
-            print("No pending replies to check.")
-            return
+            checked_leads = 0
+            replied_leads = 0
 
-        checked_leads = 0
-        replied_leads = 0
+            for lead in pending_leads:
 
-        for lead in pending_leads:
+                checked_leads += 1
 
-            checked_leads += 1
+                print(f"\nChecking {lead.company}")
 
-            print(f"\nChecking {lead.company}")
+                reply = self.gmail_service.check_reply(
+                    lead.thread_id
+                )
 
-            reply = self.gmail_service.check_reply(
-                lead.thread_id
-            )
+                if reply is None:
 
-            if reply is None:
+                    print("Unable to check Gmail thread.")
+                    continue
 
-                print("Unable to check Gmail thread.")
-                continue
+                if reply["replied"]:
 
-            if reply["replied"]:
+                    replied_leads += 1
 
-                replied_leads += 1
-
-                self.repository.mark_as_replied(
+                    updated = self.repository.mark_as_replied(
                     lead.id
                 )
 
-                print("✓ Reply received")
+                    if not updated:
+                        print(f"Failed to update lead {lead.id}")
+                        continue
 
-            else:
 
-                print("No reply yet.")
+                    print("✓ Reply received")
 
-        print("\n" + "=" * 50)
-        print("Reply Workflow Complete")
-        print("=" * 50)
-        print(f"Checked Leads : {checked_leads}")
-        print(f"Replies Found : {replied_leads}")
-        print("=" * 50)
+                else:
 
+                    print("No reply yet.")
+
+            print("\n" + "=" * 50)
+            print("Reply Workflow Complete")
+            print("=" * 50)
+            print(f"Checked Leads : {checked_leads}")
+            print(f"Replies Found : {replied_leads}")
+            print("=" * 50)
+        
+        except Exception as e:
+          
+            print('error occured in reply workflow',e)
+        
+        finally :
+            self.db.close() 
+            

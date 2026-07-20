@@ -11,9 +11,13 @@ class LeadWorkflow:
         # step1 scrapte the job 
         
         jobs = ScraperService.scrape_jobs(self.job_title,self.location)
-        # print("this is jobs",jobs)
-        # step2 open database session 
-        
+        if not jobs :
+
+            return {
+                    "status": "failed",
+                    "message": "No jobs found."
+                }
+                    
         db = get_db() 
         
         # step3 * save all this data into repository 
@@ -27,6 +31,13 @@ class LeadWorkflow:
                 "scraped_jobs":len(jobs),
                 "saved_jobs":saved_jobs
             }
+        
+        except Exception as e:
+            print(e)
+            return {
+                'status':'failed',
+                'message':'database error'
+            }    
             
         finally:
             db.close() 

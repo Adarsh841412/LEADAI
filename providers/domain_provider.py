@@ -44,29 +44,33 @@ class DomainProvider:
             "name": company_name,
             "country": location,
         }
+        try :
+            run = self.client.actor(
+                DOMAIN_ACTOR_ID
+            ).call(run_input=run_input)
+        
+            dataset_id = run.default_dataset_id
 
-        run = self.client.actor(
-            DOMAIN_ACTOR_ID
-        ).call(run_input=run_input)
-    
-        dataset_id = run.default_dataset_id
+            for item in self.client.dataset(dataset_id).iterate_items():
 
-        for item in self.client.dataset(dataset_id).iterate_items():
+                website = item.get("official_website")
 
-            website = item.get("official_website")
+                if not website:
+                    return None
 
-            if not website:
-                return None
+                domain = (
+                    urlparse(website)
+                    .netloc
+                    .replace("www.", "")
+                )
 
-            domain = (
-                urlparse(website)
-                .netloc
-                .replace("www.", "")
-            )
+                return domain
 
-            return domain
-
-        return None
+            return None
+        except Exception  as e:
+            print("error occured while finding company domain",e)
+            return None 
+        
  
  
  

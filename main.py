@@ -28,13 +28,13 @@ def main():
             location="USA",
         )
 
-        workflow.run()
+        print(workflow.run())
 
     elif flow_number == "2":
 
         workflow = ConnectWorkflow()
 
-        workflow.run()
+        print(workflow.run())
 
     elif flow_number == "3":
 
