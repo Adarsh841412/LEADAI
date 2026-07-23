@@ -17,12 +17,14 @@ class HunterProvider:
     """
 
     def __init__(self) -> None:
-        self.api_key = HUNTER_API_KEY
+        pass 
 
     def domain_search(
         self,
         domain: str,
         limit: int = 10,
+        api_key:str=''
+     
     ) -> dict[str, Any] | None:
         """
         Search for company emails using a company domain.
@@ -38,7 +40,7 @@ class HunterProvider:
         params = {
             "domain": domain,
             "limit": limit,
-            "api_key": self.api_key,
+            "api_key": api_key,
         }
 
         try:
@@ -54,6 +56,7 @@ class HunterProvider:
         except requests.RequestException:
             print('error occured in domain search')
             return None 
+
 
     def verify_email(
         self,
@@ -90,17 +93,5 @@ class HunterProvider:
 
 
 
-# hunter = HunterProvider()
 
-
-
-
-# result = hunter.domain_search(
-#         domain="stripe.com",
-#     )
-
-# print(result)
-
-# result = hunter.verify_email('amishdesai@stripe.com')
-# print(result)
 

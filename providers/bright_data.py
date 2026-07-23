@@ -1,243 +1,3 @@
-# import requests
-# import json
-# import time
-# # Failed to parse trigger
-# # API_KEY = "e36fbab6-ecee-4530-8db5-58addec70951"  # BUG: your trigger function was using a DIFFERENT key (4b292b93...) than the rest. Must be consistent.
-
-# import json
-# from datetime import datetime
-
-# def convert_brightdata_to_apify(brightdata_data):
-#     """
-#     Convert Bright Data job listings to Apify format.
-    
-#     Args:
-#         brightdata_data (list): List of job objects from Bright Data
-        
-#     Returns:
-#         list: List of jobs in Apify format
-#     """
-#     apify_jobs = []
-    
-#     for job in brightdata_data:
-#         # Extract recruiter/poster information
-#         poster = job.get('job_poster', {})
-#         if poster:
-#             recruiter_name = poster.get('name')
-#             recruiter_title = poster.get('title')
-#             recruiter_url = poster.get('url')
-#         else:
-#             recruiter_name = None
-#             recruiter_title = None
-#             recruiter_url = None
-        
-#         # Determine if remote (check description and job location)
-#         is_remote = False
-#         job_location = job.get('job_location', '')
-#         job_summary = job.get('job_summary', '').lower()
-        
-#         # Check if remote is mentioned in location or description
-#         if 'remote' in job_location.lower() or 'remote' in job_summary:
-#             is_remote = True
-        
-#         # Extract company domain from company URL or logo URL
-#         company_url = job.get('company_url', '')
-#         company_domain = None
-#         if company_url:
-#             # Extract domain from LinkedIn company URL
-#             # Example: https://www.linkedin.com/company/linksoft-technologies/
-#             parts = company_url.rstrip('/').split('/')
-#             if len(parts) >= 2:
-#                 company_domain = parts[-1]  # Gets the company handle
-        
-#         # Build the Apify format job object
-#         apify_job = {
-#             "jobId": job.get('job_posting_id', ''),
-#             "title": job.get('job_title', ''),
-#             "jobUrl": job.get('url', '').replace('?_l=en', ''),  # Clean up URL
-#             "skills": [],  # Bright Data doesn't extract skills separately
-#             "applyUrl": job.get('apply_link'),
-#             "isRemote": is_remote,
-#             "location": job.get('job_location', ''),
-#             "recruiter": {
-#                 "name": recruiter_name,
-#                 "title": recruiter_title,
-#                 "linkedinUrl": recruiter_url,
-#                 "emailGuesses": [],  # Not available from Bright Data
-#                 "emailConfidence": "none"  # Default value
-#             },
-#             "scrapedAt": job.get('timestamp', ''),
-#             "datePosted": job.get('job_posted_date', ''),
-#             "companyName": job.get('company_name', ''),
-#             "description": job.get('job_summary', ''),
-#             "companyDomain": company_domain,
-#             "employmentType": job.get('job_employment_type', ''),
-#             "experienceLevel": job.get('job_seniority_level', ''),
-#             "companyLinkedinUrl": job.get('company_url', '')
-#         }
-        
-#         apify_jobs.append(apify_job)
-    
-#     return apify_jobs
-
-
-
-
-
-
-
-# def get_brightdata_snapshot_status(snapshot_id):
-#     """
-#     checks the status of a bright data running job
-#     """
-#     # BUG: url was hardcoded to a fixed snapshot_id instead of using the parameter passed in
-#     url = f"https://api.brightdata.com/datasets/v3/progress/{snapshot_id}"
-
-#     headers = {"Authorization": f"Bearer 4b292b93-e065-4ee0-8cdf-31c0f66bb323"}
-
-#     try:
-#         response = requests.get(url, headers=headers)
-#         response.raise_for_status()
-#         return response.text
-#     except requests.exceptions.RequestException as e:
-#         print(f"Error checking snapshot status: {e}")
-#         return json.dumps({"status": "error", "error": str(e)})
-
-
-# def trigger_brightdata_job_scrape(job_title:str,location:str):
-#     """
-#     if the response.text dict with snapshot id that means still you didn't get the actual data, meaning it's still fetching, so
-#     a) first check get_brightdata_snapshot_status
-#     b) if status is ready that means data fetching is done and you get the data, get_data_by_snapshot_id function
-#     c) if status is running that means it's still fetching
-#     d) if status is failed, go back try for another location
-#     """
-
- 
-#     url = "https://api.brightdata.com/datasets/v3/scrape?dataset_id=gd_lpfll7v5hcqtkxl6l&type=discover_new&discover_by=keyword&limit_per_input=20"
-#     payload = {
-#         "input": [
-#             {
-#                 "keyword": job_title,
-#                 "time_range": "Past 24 hours",
-#                 "remote": "Remote",
-#                 "location": location
-#             }
-#         ],
-#     }
-
-#     headers = {
-#         "Authorization": "Bearer 4b292b93-e065-4ee0-8cdf-31c0f66bb323",
-#         "Content-Type": "application/json"
-#     }
-
-#     try:
-#         response = requests.post(url, json=payload, headers=headers)
-#         response.raise_for_status()
-#         return response.text
-#     except requests.exceptions.RequestException as e:
-#         print(f"Error triggering scrape: {e}")
-#         return json.dumps({"error": str(e)})
-
-
-# def wait_for_snapshot_ready(res):
-
-#     status = res.get('status')
-
-#     if status == 'ready':
-#         return "ready"
-#     elif status == 'failed':
-#         return "failed"
-#     elif status == 'running':
-#         return "running"
-#     else:
-#         return "wait for 30 sec, then try again"
-
-
-# def get_data(snapshot_id: str):
-#     """
-#     return all the lead data
-#     """
-#     url = f"https://api.brightdata.com/datasets/v3/snapshot/{snapshot_id}?format=json"
-
-#     headers = {"Authorization": f"Bearer 4b292b93-e065-4ee0-8cdf-31c0f66bb323"}
-
-#     try:
-#         response = requests.get(url, headers=headers, timeout=30)
-#         print(response.status_code)
-#         response.raise_for_status()
-#         jobs = response.json()
-#         data = json.dumps(jobs, indent=2)
-#         return data
-#     except requests.exceptions.RequestException as e:
-#         print(f"Error fetching data: {e}")
-#         return None
-#     except json.JSONDecodeError as e:
-#         print(f"Error parsing response JSON: {e}")
-#         return None
-
-
-# def run_bright_data(job_title:str,location:str):
-#     """
-#     a) first it scrapes data
-#     b) then check status of data
-#     c) after checking status if ready then it will get the data
-#     d) return that data that it gets
-#     e) else return data directly
-#     """
-
-#     raw = trigger_brightdata_job_scrape(job_title,location)
-  
-
-#     try:
-#         data = json.loads(raw)
-#         print('adarsh')
-#         print(type(data))
-#     except json.JSONDecodeError:
-#         print("Failed to parse trigger response, got:", raw)
-#         return None
-
-#     if data.get('snapshot_id'):
-#         snapshot_id = data.get('snapshot_id')
-  
-#         while True:
-#             snapshot_id=snapshot_id
-#             check = input('Enter 1 to check status, enter 2 to break: ')
-
-#             if check.strip() == "1":
-#                 # see an updated status. Now it re-fetches status on every check.
-#                 status_raw = get_brightdata_snapshot_status(snapshot_id)
-#                 try:
-#                     res = json.loads(status_raw)
-#                 except json.JSONDecodeError:
-#                     print("Failed to parse status response, got:", status_raw)
-#                     continue
-
-#                 result = wait_for_snapshot_ready(res)
-
-#                 if result == "ready":
-#                     print(result)
-#                     scraped = get_data(snapshot_id)
-#                     if scraped:
-#                         print("screaped by adarsh")
-#                         # print(scraped)
-#                         return scraped 
-#                     break  # stop looping once data is retrieved
-#                 elif result == "failed":
-#                     print("Snapshot failed. Try another location/keyword.")
-#                     break
-#                 else:
-#                     print(result)  # "running" or "wait for 30 sec, then try again"
-
-#             else:
-#                 break
-#     else:
-#         return data
-    
-
-
-
-
 import requests
 import json
 import time
@@ -247,46 +7,121 @@ from datetime import datetime
 #   API_KEY = os.environ["BRIGHTDATA_API_KEY"]
 API_KEY = "4b292b93-e065-4ee0-8cdf-31c0f66bb323"
 
-
 def convert_brightdata_to_apify(brightdata_data):
     """
     Convert Bright Data job listings to Apify format.
-
+    Filters out hybrid and on-site jobs - ONLY returns remote jobs.
+    
     Args:
         brightdata_data (list): List of job dicts from Bright Data
-
+    
     Returns:
-        list: List of jobs in Apify format
+        list: List of jobs in Apify format (ONLY remote jobs)
     """
+    if not brightdata_data:
+        return []
+    
+    # ============================================================
+    # OPTIMIZED KEYWORD LISTS
+    # ============================================================
+    
+    # Remote keywords - ACCEPT these
+    remote_keywords = [
+        'remote', 'work from home', 'wfh', 'telecommute', 'telework',
+        'fully remote', '100% remote', 'completely remote', 'entirely remote',
+        'anywhere', 'location independent', 'global', 'worldwide',
+        'distributed', 'home office', 'work at home', 'wah',
+        'remote-first', 'remote friendly', 'remote allowed',
+        'digital nomad', 'virtual office', 'off-site'
+    ]
+    
+    # Rejection keywords - if ANY match, SKIP the job
+    reject_keywords = [
+        'hybrid', 'on-site', 'on site', 'in-office', 'in office',
+        'in person', 'office-based', 'office based',
+        'partially remote', 'some remote',
+        'relocation', 'travel to work', 'must relocate',
+        'only on w2', 'only w2', 'independent visa',
+        'need independent visa', 'only independent'
+    ]
+    
     apify_jobs = []
-
+    
     for job in brightdata_data:
-        # Extract recruiter/poster information
+        
+        # EXTRACT ALL TEXT FOR CHECKING
+
+        job_location = (job.get('job_location', '') or '').lower()
+        job_title = (job.get('job_title', '') or '').lower()
+        job_summary = (job.get('job_summary', '') or '').lower()
+        
+        #  CHECK discovery_input as well
+        
+        discovery_input = job.get('discovery_input', {})
+        discovery_remote = (discovery_input.get('remote', '') or '').lower()
+        discovery_location = (discovery_input.get('location', '') or '').lower()
+        discovery_keyword = (discovery_input.get('keyword', '') or '').lower()
+        
+        # Combine ALL text for checking
+        full_text = f"{job_location} {job_title} {job_summary} {discovery_remote} {discovery_location} {discovery_keyword}"
+        
+    
+        # STEP 1: REJECT if ANY reject keyword exists
+    
+        is_rejected = False
+        rejected_keyword = None
+        
+        for keyword in reject_keywords:
+            if keyword in full_text:
+                is_rejected = True
+                rejected_keyword = keyword
+                break
+        
+        if is_rejected:
+            continue  # Skip this job - not remote
+        
+   
+        # STEP 2: CHECK if remote keyword exists
+    
+        is_remote = False
+        matched_keyword = None
+        
+        for keyword in remote_keywords:
+            if keyword in full_text:
+                is_remote = True
+                matched_keyword = keyword
+                break
+        
+   
+        # STEP 3: ONLY add if truly remote
+      
+        if not is_remote:
+            continue  # Skip - no remote indicators found
+        
+
+        # BUILD JOB OBJECT (only for remote jobs)
+
         poster = job.get('job_poster') or {}
         recruiter_name = poster.get('name')
         recruiter_title = poster.get('title')
         recruiter_url = poster.get('url')
-
-        # Determine if remote (check description and job location)
-        job_location = job.get('job_location', '') or ''
-        job_summary = (job.get('job_summary', '') or '').lower()
-        is_remote = 'remote' in job_location.lower() or 'remote' in job_summary
-
-        # Extract company domain from company URL
+        
+        # Extract company domain
         company_url = job.get('company_url', '') or ''
         company_domain = None
         if company_url:
             parts = company_url.rstrip('/').split('/')
             if len(parts) >= 2:
-                company_domain = parts[-1]  # company handle from LinkedIn URL
-
+                company_domain = parts[-1]
+        
         apify_job = {
             "jobId": job.get('job_posting_id', ''),
             "title": job.get('job_title', ''),
             "jobUrl": (job.get('url', '') or '').replace('?_l=en', ''),
-            "skills": [],  # Bright Data doesn't extract skills separately
+            "skills": [],
             "applyUrl": job.get('apply_link'),
-            "isRemote": is_remote,
+            "isRemote": True,
+            "remoteStatus": "Remote",
             "location": job.get('job_location', ''),
             "recruiter": {
                 "name": recruiter_name,
@@ -303,12 +138,17 @@ def convert_brightdata_to_apify(brightdata_data):
             "employmentType": job.get('job_employment_type', ''),
             "experienceLevel": job.get('job_seniority_level', ''),
             "companyLinkedinUrl": job.get('company_url', ''),
-            "platform":'bright_data'
+            "platform": 'bright_data',
+            "discovery_input": discovery_input, 
+            # Extra info for debugging
+            "_matched_keyword": matched_keyword
         }
-
+        
         apify_jobs.append(apify_job)
-
+    
     return apify_jobs
+
+
 
 
 def get_brightdata_snapshot_status(snapshot_id):
@@ -335,7 +175,7 @@ def trigger_brightdata_job_scrape(job_title: str, location: str):
       a) a single JSON object with a snapshot_id -> still processing, need to poll
       b) multiple JSON objects concatenated by newlines (NDJSON) -> data ready immediately
     """
-    url = "https://api.brightdata.com/datasets/v3/scrape?dataset_id=gd_lpfll7v5hcqtkxl6l&type=discover_new&discover_by=keyword&limit_per_input=10"
+    url = "https://api.brightdata.com/datasets/v3/scrape?dataset_id=gd_lpfll7v5hcqtkxl6l&type=discover_new&discover_by=keyword&limit_per_input=2"
     payload = {
         "input": [
             {
@@ -358,8 +198,7 @@ def trigger_brightdata_job_scrape(job_title: str, location: str):
     except requests.exceptions.RequestException as e:
         print(f"Error triggering scrape: {e}")
         return json.dumps({"error": str(e)})
-
-
+    
 def wait_for_snapshot_ready(res):
     status = res.get('status')
 
@@ -396,6 +235,7 @@ def get_data(snapshot_id: str):
 
 
 def parse_brightdata_response(raw: str):
+    
     """
     raw is always a str. It can be:
       a) a single JSON object   -> {"snapshot_id": "..."}
@@ -405,6 +245,7 @@ def parse_brightdata_response(raw: str):
     Returns a Python dict or list[dict], or None on total failure.
     Never returns a string.
     """
+    
     if raw is None:
         return None
 
@@ -452,13 +293,12 @@ def run_bright_data(job_title: str, location: str):
     d) Returns a Python object (list[dict] preferably) -- NEVER a raw JSON string.
     """
     raw = trigger_brightdata_job_scrape(job_title, location)  # raw: str
-    # print("Adarsh kumar dubey")
-    # print(raw)
 
     data = parse_brightdata_response(raw)
     if data is None:
-        return None
-
+        return None 
+    
+    
     # Case: multiple records already returned (JSON array or NDJSON) -> done
     if isinstance(data, list):
         print(f"Got {len(data)} records directly, no polling needed.")
@@ -488,6 +328,7 @@ def run_bright_data(job_title: str, location: str):
                 if result == "ready":
                     print(result)
                     scraped = get_data(snapshot_id)  # already parsed (list/dict) or None
+                    print("Number of jobs:", len(scraped))  
                     if scraped is not None:
                         print("scraped by adarsh")
                         if isinstance(scraped, dict):
@@ -507,5 +348,9 @@ def run_bright_data(job_title: str, location: str):
     # Anything else (int, None, etc.) -- unexpected shape
     print("Unexpected data type from trigger response:", type(data))
     return None
+
+
+
+
 
 

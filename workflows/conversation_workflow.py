@@ -26,9 +26,9 @@ class ConversationWorkflow:
 
     def run(self):
 
-        # ---------------------------------------------------------
+     
         # Step 1 : Fetch Pending Conversations
-        # ---------------------------------------------------------
+     
         try :
             
             conversation_leads = self.repository.get_pending_conversation()
@@ -41,9 +41,9 @@ class ConversationWorkflow:
 
             checked = 0
 
-            # ---------------------------------------------------------
+         
             # Step 2 : Process Each Lead
-            # ---------------------------------------------------------
+         
 
             for lead in conversation_leads:
 
@@ -51,9 +51,9 @@ class ConversationWorkflow:
 
                 print(f"\nChecking {lead.company}")
 
-                # -----------------------------------------------------
+             
                 # Get Latest Recruiter Email
-                # -----------------------------------------------------
+             
 
                 latest_message = self.gmail_service.get_latest_recruiter_message(
                     lead.thread_id
@@ -71,9 +71,11 @@ class ConversationWorkflow:
                     "email": latest_message["body"],      # Later replace with body
                 }
                 # print(latest_message['body'])
-                # -----------------------------------------------------
+             
+             
+             
                 # Analyze Conversation
-                # -----------------------------------------------------
+             
             
                 analysis = self.llm_service.conversation_analyzer(
                     payload
@@ -89,9 +91,9 @@ class ConversationWorkflow:
 
                 print(f"Detected Intent : {intent}")
 
-                # =====================================================
+             
                 # CASE 1 : MEETING
-                # =====================================================
+             
 
                 if intent == "MEETING":
 
@@ -124,9 +126,9 @@ class ConversationWorkflow:
 
 
 
-                # =====================================================
+             
                 # CASE 2 : QUESTION
-                # =====================================================
+             
                 elif intent == "QUESTION":
 
                     print("Recruiter asked a question.")
@@ -180,9 +182,9 @@ class ConversationWorkflow:
                     else:
                      print("Failed to update database.")
 
-    #             # =====================================================
+    #          
     #             # CASE 3 : ASSESSMENT
-    #             # =====================================================
+    #          
 
                 elif intent == "ASSESSMENT":
 
@@ -206,9 +208,9 @@ class ConversationWorkflow:
                         print("Assessment stored successfully.")
                     else:
                         print("Assessment not stored.")
-    #             # =====================================================
+    #          
     #             # CASE 4 : GENERAL_REPLY
-    #             # =====================================================
+    #          
 
                 elif intent == "GENERAL_REPLY":
 
@@ -255,9 +257,9 @@ class ConversationWorkflow:
 
                     print("Reply sent.")
 
-    #             # =====================================================
+    #          
     #             # CASE 5 : REJECTION
-    #             # =====================================================
+    #          
 
                 elif intent == "REJECTION":
 
@@ -270,9 +272,9 @@ class ConversationWorkflow:
                         print("Lead updated to reject.")
                     else:
                         print("Failed to update lead.")
-    #             # =====================================================
+    #          
     #             # CASE 6 : UNKNOWN
-    #             # =====================================================
+    #          
 
                 elif intent == "UNKNOWN":
 
@@ -287,9 +289,9 @@ class ConversationWorkflow:
                     else:
                         print("Failed to mark lead for manual review.")
 
-            # ---------------------------------------------------------
+         
             # Step 3 : Summary
-            # ---------------------------------------------------------
+         
 
             print("\n" + "=" * 60)
             print("Conversation Workflow Completed")

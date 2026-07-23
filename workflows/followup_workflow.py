@@ -32,9 +32,8 @@ class FollowUpWorkflow:
             - Update database.
         """
 
-        # ---------------------------------------------------------
         # Step 1 : Fetch eligible leads
-        # ---------------------------------------------------------
+      
         try :
 
             followup_leads = self.repository.get_pending_followups()
@@ -47,9 +46,9 @@ class FollowUpWorkflow:
             replied_leads = 0
             followups_sent = 0
 
-            # ---------------------------------------------------------
+          
             # Step 2 : Process each lead
-            # ---------------------------------------------------------
+          
 
             for lead in followup_leads:
 
@@ -175,9 +174,9 @@ class FollowUpWorkflow:
                     print("Error occured in db",e)
                     continue 
             
-            # ---------------------------------------------------------
+          
             # Step 3 : Summary
-            # ---------------------------------------------------------
+          
 
             print("\n" + "=" * 60)
             print("        Follow-up Workflow Complete")

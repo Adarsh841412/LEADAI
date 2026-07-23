@@ -15,7 +15,7 @@ from config.settings import (
 )
 
 
-class ApifyProvider:
+class Lead_Provider:
     """
     Handles communication with the Apify LinkedIn Jobs Scraper.
     """
@@ -102,6 +102,7 @@ class ApifyProvider:
             if data is None:
                 print("No data returned from Bright Data.")
                 return []
+            print(data)
     
         # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
         
@@ -112,8 +113,6 @@ class ApifyProvider:
                 return []
         
             dataset_items = convert_brightdata_to_apify(data)
-            print("scraped by adarsh")
-            print(dataset_items)
             return dataset_items
                 
 

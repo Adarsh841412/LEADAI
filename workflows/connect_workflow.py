@@ -2,7 +2,6 @@ from database.db import get_db
 from database.repository import LeadRepository
 from services.connect_service import ConnectService
 
-
 class ConnectWorkflow:
     """
     Connect Workflow.
@@ -33,11 +32,14 @@ class ConnectWorkflow:
         processed = 0
         success = 0
         failed = 0
+     
 
         # Leads without email
         try :
             
             leads = self.repository.get_pending_connections()
+            pending_connections = len(leads) | 0 
+            
             print(leads)
             if not leads:
                 return {
@@ -53,10 +55,13 @@ class ConnectWorkflow:
                 try:
 
                     enriched = self.connect_service.enrich_lead(
-                        {
+                      lead =     {
                             "company": lead.company,
                             "location": lead.location,
-                        }
+                           
+                            
+                        },
+                      pending_connections=pending_connections,
                     )
 
                     if not enriched:

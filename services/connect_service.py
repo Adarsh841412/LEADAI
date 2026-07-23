@@ -7,10 +7,10 @@ company domain and best contact email.
 """
 
 from typing import Any
-
 from providers.domain_provider import DomainProvider
 from providers.hunter import HunterProvider
 from utils.ranking import EmailRanker
+from manager.hunter_manager import HunterManager
 
 
 class ConnectService:
@@ -31,12 +31,18 @@ class ConnectService:
     """
 
     def __init__(self) -> None:
+        
         self.domain_provider = DomainProvider()
+        self.hunter_manager = HunterManager() 
+        # self.api_key = self.hunter_manager.get_available_key()
         self.hunter_provider = HunterProvider()
 
     def enrich_lead(
         self,
         lead: dict[str, Any],
+        pending_connections:int 
+       
+       
     ) -> dict[str, Any] | None:
         """
         Enrich a single lead.
@@ -47,7 +53,7 @@ class ConnectService:
         Returns:
             Enriched contact dictionary or None.
         """
-
+        api_key = self.hunter_manager.get_available_key(pending_connections)
         company = lead.get("company")
         location = lead.get("location")
 
@@ -61,6 +67,7 @@ class ConnectService:
         company_domain = self.domain_provider.find_domain(
             company_name=company,
             location=location,
+            
         )
 
         if not company_domain:
@@ -72,10 +79,10 @@ class ConnectService:
         
         hunter_response = self.hunter_provider.domain_search(
             domain=company_domain,
+            api_key = api_key
+            
+           
         )
-
-        # print(company_domain)
-        # print(hunter_response)
         
     
         if not hunter_response:
@@ -114,16 +121,3 @@ class ConnectService:
         return best_contact
 
 
-
-# service = ConnectService()
-
-# lead = {
-#         "company": "Stripe",
-#         "location": "United States",
-#     }
-
-# result = service.enrich_lead(lead)
-
-# print(result)
-    
-    

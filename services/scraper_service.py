@@ -14,7 +14,7 @@ Pipeline:
 
 from typing import Any
 
-from providers.apify import ApifyProvider
+from providers.apify import Lead_Provider
 from utils.filters import JobFilter
 from utils.validators import JobValidator
 from utils.dedup import JobDeduplicator
@@ -44,7 +44,7 @@ class ScraperService:
             List of clean jobs.
         """
         try:
-            provider = ApifyProvider()
+            provider = Lead_Provider()
 
             jobs = provider.fetch_jobs(
                 job_title=job_title,
@@ -59,5 +59,6 @@ class ScraperService:
         jobs = JobValidator.validate_jobs(jobs)
 
         jobs = JobDeduplicator.remove_duplicates(jobs)
-     
+
+        # print(jobs)
         return jobs

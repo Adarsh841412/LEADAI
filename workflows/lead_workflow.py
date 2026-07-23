@@ -2,13 +2,15 @@ from services.scraper_service import ScraperService
 from database.repository import LeadRepository
 from database.db import get_db
 class LeadWorkflow:
-    def __init__(self)->None:
-          pass 
-    def run(self,job_title:str,location:str)->dict:
+    def __init__(self,job_title,location)->None:
+        self.job_title=job_title
+        self.location= location 
+        
+    def run(self)->dict:
         
         # step1 scrapte the job 
         
-        jobs = ScraperService.scrape_jobs(job_title,location)
+        jobs = ScraperService.scrape_jobs(self.job_title,self.location)
         if not jobs :
 
             return {
