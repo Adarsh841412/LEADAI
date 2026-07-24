@@ -2,6 +2,7 @@ from typing import Any
 from apify_client import ApifyClient
 import requests
 from providers.bright_data import run_bright_data,convert_brightdata_to_apify
+from providers.bright_data_indded import run_bright_data_indded,convert_brightdata_to_apify_indded
 import json 
 from config.settings import (
     APIFY_BASE_URL,
@@ -72,8 +73,8 @@ class Lead_Provider:
         
         """
         while True :
-            inp = input("press 1 to get data from apify\npress 2 to get data from bright data\n")
-            if inp.strip() in ("1", "2"):
+            inp = input("press 1 to get data from apify\npress 2 to get data from bright data\npress3 for indeed\n")
+            if inp.strip() in ("1", "2","3"):
                 break
             else :
                 print("it is invalid selection try again ")
@@ -95,7 +96,8 @@ class Lead_Provider:
             return dataset_items 
         
         
-        # *hanlde bright data 
+        # *hanlde bright data  linkedin 
+        
         elif inp.strip() == "2":
             data = run_bright_data(job_title, location)   # already parsed: list[dict] or dict, NOT a str
     
@@ -114,8 +116,27 @@ class Lead_Provider:
         
             dataset_items = convert_brightdata_to_apify(data)
             return dataset_items
-                
-
-
-
+        
+        
+        # * this is for indeed 
+        
+        elif inp.strip() == "3":
             
+            data = run_bright_data_indded(job_title)   # already parsed: list[dict] or dict, NOT a str
+    
+            if data is None:
+                print("No data returned from Bright Data.")
+                return []
+            print(data)
+    
+        # # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+        
+        #     if isinstance(data, dict):
+        #         data = [data]          # wrap single dict into a list
+        #     elif not isinstance(data, list):
+        #         print("Unexpected data type:", type(data))
+        #         return []
+        
+        #     dataset_items = convert_brightdata_to_apify_indded(data)
+        #     return dataset_items
+              

@@ -3,8 +3,7 @@ import json
 import time
 from datetime import datetime
 
-# NOTE: move this to an environment variable in production, e.g.:
-#   API_KEY = os.environ["BRIGHTDATA_API_KEY"]
+
 API_KEY = "4b292b93-e065-4ee0-8cdf-31c0f66bb323"
 
 def convert_brightdata_to_apify(brightdata_data):
@@ -339,7 +338,7 @@ def run_bright_data(job_title: str, location: str):
                     print("Snapshot failed. Try another location/keyword.")
                     break
                 else:
-                    print(result)  # "running" or "wait for 30 sec, then try again"
+                    print(result)  # "running" or "wait for 30 sec,
             else:
                 break
 
