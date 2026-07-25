@@ -5,6 +5,7 @@ from datetime import datetime, timezone, timedelta
 class JobFilter:
 
     TECH_KEYWORDS = {
+        # Languages
         "python", "django", "fastapi", "flask",
         "react", "vue", "angular", "javascript", "typescript",
         "node", "nodejs", "express", "nestjs", "mern",
@@ -16,7 +17,31 @@ class JobFilter:
         "genai", "llm", "langchain", "langgraph", "rag", "nlp",
         "data engineer", "data engineering", "spark", "hadoop",
         "airflow", "pandas", "numpy", "scikit",
+        
+        # 🔥 ADD THESE - Common tech terms in your job descriptions
+        "go", "golang", "rust", "c++", "c#", "java",
+        "spring", "springboot", "graphql",
+        "microservices", "api", "backend", "frontend",
+        "fullstack", "full stack", 
+        "software engineer", "software developer",
+        "distributed systems", "scalable",
+        "typescript", "javascript", "html", "css",
+        "redis", "kafka", "rabbitmq",
+        "docker", "kubernetes", "terraform",
+        "ci/cd", "jenkins", "github actions",
+        "react", "vue", "angular", "next.js", "nextjs",
+        "node.js", "nodejs", "express.js", "nestjs",
+        "postgres", "mysql", "mongodb",
+        "aws", "azure", "gcp", "cloud",
+        "devops", "sre", "site reliability",
+        "data", "analytics", "big data",
+        "machine learning", "deep learning", "nlp",
+        "llm", "langchain", "rag",
+        "infrastructure", "automation",
+        "agile", "scrum", "kanban",
+        "git", "github", "bitbucket",
     }
+
 
     RECENT_DAYS_THRESHOLD = 2  # jobs posted within this many days count as "recent"
 

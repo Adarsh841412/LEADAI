@@ -11,6 +11,7 @@ class LeadWorkflow:
         # step1 scrapte the job 
         
         jobs = ScraperService.scrape_jobs(self.job_title,self.location)
+        
         if not jobs :
 
             return {

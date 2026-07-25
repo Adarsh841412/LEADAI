@@ -44,7 +44,7 @@ def main():
 
         workflow = LeadWorkflow(
             job_title="Python Developer",
-            location="USA",
+            location="US",
         )
 
         print(workflow.run())

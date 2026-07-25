@@ -1,9 +1,181 @@
+# from typing import Any
+# from apify_client import ApifyClient
+# import requests
+# from providers.bright_data import run_bright_data,convert_brightdata_to_apify
+# from providers.bright_data_indded import run_bright_data_indded,convert_brightdata_to_apify_indded
+# from providers.bright_data_glassdor import run_bright_data_glassdoor,convert_brightdata_to_apify_glassdoor
+# import json 
+# from config.settings import (
+#     APIFY_BASE_URL,
+#     APIFY_TIMEOUT,
+#     APIFY_TOKEN,
+#     DEFAULT_ROWS,
+#     DEFAULT_PUBLISHED_AT,
+#     EXPERIENCE,
+#     ACTOR_ID,
+#     DEFAULT_JOB_TYPE
+# )
+
+
+# class Lead_Provider:
+#     """
+#     Handles communication with the Apify LinkedIn Jobs Scraper.
+#     """
+
+#     def __init__(self) -> None:
+#         self.api_token=APIFY_TOKEN
+#         self.base_url=APIFY_BASE_URL
+#         self.timeout=APIFY_TIMEOUT
+
+
+#     def _build_payload(
+#         self,
+#         job_title: str,
+#         location: str,
+#     ) -> dict[str, Any]:
+#         """
+#         Build payload for Apify.
+#         """
+
+#         return {
+#             "searchQuery": job_title,
+#             "location": location,
+#             "experienceLevel": EXPERIENCE,
+#             "jobType": DEFAULT_JOB_TYPE,
+#             "maxResults": DEFAULT_ROWS,
+#             "datePosted":DEFAULT_PUBLISHED_AT,
+#             "remoteOnly": True,
+#             "includeRecruiterEnrichment": True
+#         }
+
+#     def _send_request(
+#         self,
+#         payload: dict[str, Any]
+#     ):
+#         """
+#         Send request to Apify API.
+#         """
+#         client = ApifyClient(self.api_token)   
+#         run_input = payload
+#         run = client.actor(ACTOR_ID).call(run_input=run_input)
+#         return run 
+        
+     
+    
+    
+
+#     def fetch_jobs(
+#         self,
+#         job_title: str,
+#         location: str,
+#     ) -> list[dict[str, Any]]:
+#         """
+#         Fetch jobs from Apify.
+        
+#         """
+#         while True :
+#             inp = input("press 1 to get data from apify\npress 2 to get data from bright data\npress3 for indeed\n")
+#             if inp.strip() in ("1", "2","3"):
+#                 break
+#             else :
+#                 print("it is invalid selection try again ")
+        
+#         if inp.strip() == "1":
+#             payload = self._build_payload(
+#                 job_title=job_title,
+#                 location=location,
+#             )
+
+#             run =  self._send_request(
+#                 payload=payload
+#             )
+#             dataset_id = run.default_dataset_id
+#             dataset_items = []
+#             client = ApifyClient(self.api_token)   
+#             for item in client.dataset(dataset_id).iterate_items():
+#                 dataset_items.append(item)
+#             return dataset_items 
+        
+        
+#         # *hanlde bright data  linkedin 
+        
+#         elif inp.strip() == "2":
+#             data = run_bright_data(job_title, location)   # already parsed: list[dict] or dict, NOT a str
+    
+#             if data is None:
+#                 print("No data returned from Bright Data.")
+#                 return []
+            
+#             print(" i am adarsh dubey and you know me ")
+#             print(data)
+    
+#         # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+        
+#             if isinstance(data, dict):
+#                 data = [data]          # wrap single dict into a list
+#             elif not isinstance(data, list):
+#                 print("Unexpected data type:", type(data))
+#                 return []
+        
+#             dataset_items = convert_brightdata_to_apify(data)
+#             return dataset_items
+        
+        
+#         # * this is for indeed 
+        
+#         elif inp.strip() == "3":
+            
+#             data = run_bright_data_indded(job_title,location)   # already parsed: list[dict] or dict, NOT a str
+    
+#             if data is None:
+#                 print("No data returned from Bright Data.")
+#                 return []
+#             print(data)
+    
+#         # # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+        
+#             if isinstance(data, dict):
+#                 data = [data]          # wrap single dict into a list
+#             elif not isinstance(data, list):
+#                 print("Unexpected data type:", type(data))
+#                 return []
+        
+#             dataset_items = convert_brightdata_to_apify_indded(data)
+#             return dataset_items
+              
+              
+#             #   this one for glassdoor 
+            
+            
+#         elif inp.strip() == "4":
+            
+#             data = run_bright_data_glassdoor(job_title,location)   # already parsed: list[dict] or dict, NOT a str
+    
+#             if data is None:
+#                 print("No data returned from Bright Data.")
+#                 return []
+#             print(data)
+    
+#         # # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+        
+#             if isinstance(data, dict):
+#                 data = [data]          # wrap single dict into a list
+#             elif not isinstance(data, list):
+#                 print("Unexpected data type:", type(data))
+#                 return []
+        
+#             dataset_items = convert_brightdata_to_apify_glassdoor(data)
+#             return dataset_items            
+            
+            
+            
 from typing import Any
 from apify_client import ApifyClient
 import requests
-from providers.bright_data import run_bright_data,convert_brightdata_to_apify
-from providers.bright_data_indded import run_bright_data_indded,convert_brightdata_to_apify_indded
-import json 
+from providers.bright_data import run_bright_data, convert_brightdata_to_apify
+from providers.bright_data_indded import run_bright_data_indded, convert_brightdata_to_apify_indded
+from providers.bright_data_glassdor import run_bright_data_glassdoor, convert_brightdata_to_apify_glassdoor
+import json
 from config.settings import (
     APIFY_BASE_URL,
     APIFY_TIMEOUT,
@@ -22,10 +194,9 @@ class Lead_Provider:
     """
 
     def __init__(self) -> None:
-        self.api_token=APIFY_TOKEN
-        self.base_url=APIFY_BASE_URL
-        self.timeout=APIFY_TIMEOUT
-
+        self.api_token = APIFY_TOKEN
+        self.base_url = APIFY_BASE_URL
+        self.timeout = APIFY_TIMEOUT
 
     def _build_payload(
         self,
@@ -35,14 +206,13 @@ class Lead_Provider:
         """
         Build payload for Apify.
         """
-
         return {
             "searchQuery": job_title,
             "location": location,
             "experienceLevel": EXPERIENCE,
             "jobType": DEFAULT_JOB_TYPE,
             "maxResults": DEFAULT_ROWS,
-            "datePosted":DEFAULT_PUBLISHED_AT,
+            "datePosted": DEFAULT_PUBLISHED_AT,
             "remoteOnly": True,
             "includeRecruiterEnrichment": True
         }
@@ -54,14 +224,10 @@ class Lead_Provider:
         """
         Send request to Apify API.
         """
-        client = ApifyClient(self.api_token)   
+        client = ApifyClient(self.api_token)
         run_input = payload
         run = client.actor(ACTOR_ID).call(run_input=run_input)
-        return run 
-        
-     
-    
-    
+        return run
 
     def fetch_jobs(
         self,
@@ -70,73 +236,109 @@ class Lead_Provider:
     ) -> list[dict[str, Any]]:
         """
         Fetch jobs from Apify.
-        
         """
-        while True :
-            inp = input("press 1 to get data from apify\npress 2 to get data from bright data\npress3 for indeed\n")
-            if inp.strip() in ("1", "2","3"):
+        while True:
+            inp = input(
+                "press 1 to get data from apify\n"
+                "press 2 to get data from bright data\n"
+                "press 3 for indeed\n"
+                "press 4 for glassdoor\n"
+            )
+            if inp.strip() in ("1", "2", "3", "4"):
                 break
-            else :
+            else:
                 print("it is invalid selection try again ")
-        
+
         if inp.strip() == "1":
             payload = self._build_payload(
                 job_title=job_title,
                 location=location,
             )
 
-            run =  self._send_request(
+            run = self._send_request(
                 payload=payload
             )
             dataset_id = run.default_dataset_id
             dataset_items = []
-            client = ApifyClient(self.api_token)   
+            client = ApifyClient(self.api_token)
             for item in client.dataset(dataset_id).iterate_items():
                 dataset_items.append(item)
-            return dataset_items 
-        
-        
-        # *hanlde bright data  linkedin 
-        
+            return dataset_items
+
+        # * handle bright data linkedin
+
         elif inp.strip() == "2":
             data = run_bright_data(job_title, location)   # already parsed: list[dict] or dict, NOT a str
-    
+
             if data is None:
                 print("No data returned from Bright Data.")
                 return []
-            print(data)
-    
-        # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
-        
+
+            # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+
             if isinstance(data, dict):
                 data = [data]          # wrap single dict into a list
             elif not isinstance(data, list):
                 print("Unexpected data type:", type(data))
                 return []
-        
+
             dataset_items = convert_brightdata_to_apify(data)
             return dataset_items
-        
-        
-        # * this is for indeed 
-        
+
+        # * this is for indeed
+
         elif inp.strip() == "3":
-            
-            data = run_bright_data_indded(job_title)   # already parsed: list[dict] or dict, NOT a str
-    
+
+            data = run_bright_data_indded(job_title, location)   # already parsed: list[dict] or dict, NOT a str
+
             if data is None:
                 print("No data returned from Bright Data.")
                 return []
-            print(data)
-    
-        # # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+
+            # normalize to a list of job dicts, since convert_brightdata_to_apify expects a list
+
+            if isinstance(data, dict):
+                data = [data]          # wrap single dict into a list
+            elif not isinstance(data, list):
+                print("Unexpected data type:", type(data))
+                return []
+
+            dataset_items = convert_brightdata_to_apify_indded(data)
+            return dataset_items
+
+        # * this one for glassdoor
+
+        elif inp.strip() == "4":
+            try:
+                print(f"Fetching Glassdoor jobs for: {job_title} in {location}")
+                data = run_bright_data_glassdoor(job_title, location)
+                
+                if data is None:
+                    print("No data returned from Bright Data.")
+                    return []
+                
+                # Normalize to a list of job dicts
+                if isinstance(data, dict):
+                    data = [data]  # wrap single dict into a list
+                elif not isinstance(data, list):
+                    print("Unexpected data type:", type(data))
+                    return []
+                
+                print(f"Converting {len(data)} jobs...")
+                
+                # CONVERT the data
+                dataset_items = convert_brightdata_to_apify_glassdoor(data)
         
-        #     if isinstance(data, dict):
-        #         data = [data]          # wrap single dict into a list
-        #     elif not isinstance(data, list):
-        #         print("Unexpected data type:", type(data))
-        #         return []
-        
-        #     dataset_items = convert_brightdata_to_apify_indded(data)
-        #     return dataset_items
-              
+                # Return the converted jobs, NOT an empty list or None
+                if dataset_items:
+                    print(dataset_items)
+                    return dataset_items
+                else:
+                    print("No remote jobs found after filtering.")
+                    return []  # Return empty list, not None
+                    
+            except Exception as e:
+                print(f"Error in Glassdoor fetch: {e}")
+                import traceback
+                traceback.print_exc()
+                return []

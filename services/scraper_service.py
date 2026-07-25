@@ -56,6 +56,8 @@ class ScraperService:
             
         
         jobs = JobFilter.filter_recent_tech_jobs(jobs)
+        print(" i m filte rrecent jobs")
+        print(jobs)
         jobs = JobValidator.validate_jobs(jobs)
 
         jobs = JobDeduplicator.remove_duplicates(jobs)
