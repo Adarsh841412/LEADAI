@@ -1,22 +1,3 @@
-
-# from scheduler.scheduler import LeadScheduler
-
-
-# def main():
-
-#     scheduler = LeadScheduler()
-
-#     scheduler.start()
-
-
-# if __name__ == "__main__":
-#     main()
-
-
-
-
-
-
 from workflows.lead_workflow import LeadWorkflow
 from workflows.connect_workflow import ConnectWorkflow
 from workflows.outreach_workflow import OutreachWorkflow
@@ -32,10 +13,6 @@ def main():
     print("=" * 60)
     print("1. Lead Workflow")
     print("2. Connect Workflow")
-    print("3. Outreach Workflow")
-    print("4. Reply Workflow")
-    print("5. Follow-up Workflow")
-    print("6. Conversation Workflow")
     print("=" * 60)
 
     flow_number = input("Select Workflow: ").strip()
