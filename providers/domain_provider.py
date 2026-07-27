@@ -22,12 +22,13 @@ class DomainProvider:
     """
 
     def __init__(self) -> None:
-        self.client = ApifyClient('apify_api_1a5Pk8VUYi3UPrggvDNztx5EUsq1sV06UQCR')
+      pass 
 
     def find_domain(
         self,
         company_name: str,
         location: str,
+        api:str 
     ) -> str | None:
         """
         Find the company's official domain.
@@ -39,7 +40,7 @@ class DomainProvider:
         Returns:
             Company domain if found else None.
         """
-
+        self.client = ApifyClient(api)
         run_input = {
             "name": company_name,
             "country": location,
@@ -76,11 +77,3 @@ class DomainProvider:
  
 
     
-    
-# provider = DomainProvider()
-# domain = provider.find_domain(
-#         company_name="Hire Feed",
-#         location="India",
-#     )
-
-# print(domain)    

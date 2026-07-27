@@ -164,7 +164,7 @@ def trigger_brightdata_job_scrape_indded(job_title: str, country:str):
       a) a single JSON object with a snapshot_id -> still processing, need to poll
       b) multiple JSON objects concatenated by newlines (NDJSON) -> data ready immediately
     """
-    url = "https://api.brightdata.com/datasets/v3/scrape?dataset_id=gd_l4dx9j9sscpvs7no2&type=discover_new&discover_by=keyword&limit_per_input=2"
+    url = "https://api.brightdata.com/datasets/v3/scrape?dataset_id=gd_l4dx9j9sscpvs7no2&type=discover_new&discover_by=keyword&limit_per_input=10"
     payload = {
         "input": [
             {
@@ -274,25 +274,25 @@ def parse_brightdata_response_indded(raw: str):
     return None
 
 
-def run_bright_data_indded(job_title: str,country:str):
-    
-    
+
+
+
+
+def run_bright_data_indded(job_title: str, country: str):
     """
     a) Triggers the scrape.
     b) If the response is already multiple records (list) -> data is ready,
        return it directly, no polling needed.
-    c) If the response is a single dict with a snapshot_id -> poll until ready,
+    c) If the response is a single dict with a snapshot_id -> auto-poll until ready,
        then fetch and return the final data.
     d) Returns a Python object (list[dict] preferably) -- NEVER a raw JSON string.
     """
-    
-    raw = trigger_brightdata_job_scrape_indded(job_title,country)  # raw: str
+    raw = trigger_brightdata_job_scrape_indded(job_title, country)  # raw: str
 
     data = parse_brightdata_response_indded(raw)
     if data is None:
-        return None 
-    
-    
+        return None
+
     # Case: multiple records already returned (JSON array or NDJSON) -> done
     if isinstance(data, list):
         print(f"Got {len(data)} records directly, no polling needed.")
@@ -303,45 +303,111 @@ def run_bright_data_indded(job_title: str,country:str):
         snapshot_id = data.get('snapshot_id')
 
         if not snapshot_id:
-            # dict but no snapshot_id -> nothing to poll, return as-is (wrapped in list
-            # for consistency with downstream code that expects a list of jobs)
             return [data]
 
         while True:
-            check = input('Enter 1 to check status, enter 2 to break: ')
+            status_raw = get_brightdata_snapshot_status_indded(snapshot_id)
+            res = parse_brightdata_response_indded(status_raw)
 
-            if check.strip() == "1":
-                status_raw = get_brightdata_snapshot_status_indded(snapshot_id)
-                res = parse_brightdata_response_indded(status_raw)
-                if res is None or not isinstance(res, dict):
-                    print("Failed to parse status response, got:", status_raw)
-                    continue
+            if res is None or not isinstance(res, dict):
+                print("Failed to parse status response, got:", status_raw)
+                time.sleep(10)
+                continue
 
-                result = wait_for_snapshot_ready_indded(res)
+            result = wait_for_snapshot_ready_indded(res)
 
-                if result == "ready":
-                    print(result)
-                    scraped = get_data_indded(snapshot_id)  # already parsed (list/dict) or None
-                    print("Number of jobs:", len(scraped))  
-                    if scraped is not None:
-                        print("scraped by adarsh")
-                        if isinstance(scraped, dict):
-                            scraped = [scraped]
-                        return scraped
-                    break  # fetch failed, stop looping
-                elif result == "failed":
-                    print("Snapshot failed. Try another location/keyword.")
-                    break
-                else:
-                    print(result)  
-            else:
+            if result == "ready":
+                print(result)
+                scraped = get_data_indded(snapshot_id)  # already parsed (list/dict) or None
+                if scraped is not None:
+                    print("Number of jobs:", len(scraped))
+                    if isinstance(scraped, dict):
+                        scraped = [scraped]
+                    return scraped
+                print("Fetch failed after snapshot was ready.")
+                return None
+
+            elif result == "failed":
+                print("Snapshot failed. Try another location/keyword.")
                 break
+
+            else:
+                print(result)
+                time.sleep(10)
 
         return None
 
-    # Anything else (int, None, etc.) -- unexpected shape
     print("Unexpected data type from trigger response:", type(data))
     return None
+
+# def run_bright_data_indded(job_title: str,country:str):
+    
+    
+#     """
+#     a) Triggers the scrape.
+#     b) If the response is already multiple records (list) -> data is ready,
+#        return it directly, no polling needed.
+#     c) If the response is a single dict with a snapshot_id -> poll until ready,
+#        then fetch and return the final data.
+#     d) Returns a Python object (list[dict] preferably) -- NEVER a raw JSON string.
+#     """
+    
+#     raw = trigger_brightdata_job_scrape_indded(job_title,country)  # raw: str
+
+#     data = parse_brightdata_response_indded(raw)
+#     if data is None:
+#         return None 
+    
+    
+#     # Case: multiple records already returned (JSON array or NDJSON) -> done
+#     if isinstance(data, list):
+#         print(f"Got {len(data)} records directly, no polling needed.")
+#         return data
+
+#     # Case: single dict -> likely has snapshot_id, needs polling
+#     if isinstance(data, dict):
+#         snapshot_id = data.get('snapshot_id')
+
+#         if not snapshot_id:
+#             # dict but no snapshot_id -> nothing to poll, return as-is (wrapped in list
+#             # for consistency with downstream code that expects a list of jobs)
+#             return [data]
+
+#         while True:
+#             check = input('Enter 1 to check status, enter 2 to break: ')
+
+#             if check.strip() == "1":
+#                 status_raw = get_brightdata_snapshot_status_indded(snapshot_id)
+#                 res = parse_brightdata_response_indded(status_raw)
+#                 if res is None or not isinstance(res, dict):
+#                     print("Failed to parse status response, got:", status_raw)
+#                     continue
+
+#                 result = wait_for_snapshot_ready_indded(res)
+
+#                 if result == "ready":
+#                     print(result)
+#                     scraped = get_data_indded(snapshot_id)  # already parsed (list/dict) or None
+#                     print("Number of jobs:", len(scraped))  
+#                     if scraped is not None:
+#                         print("scraped by adarsh")
+#                         if isinstance(scraped, dict):
+#                             scraped = [scraped]
+#                         return scraped
+#                     break  # fetch failed, stop looping
+#                 elif result == "failed":
+#                     print("Snapshot failed. Try another location/keyword.")
+#                     break
+#                 else:
+#                     print(result)  
+#             else:
+#                 break
+
+#         return None
+
+#     # Anything else (int, None, etc.) -- unexpected shape
+#     print("Unexpected data type from trigger response:", type(data))
+#     return None
 
 
 

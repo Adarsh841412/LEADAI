@@ -137,7 +137,7 @@ def convert_brightdata_to_apify(brightdata_data):
             "employmentType": job.get('job_employment_type', ''),
             "experienceLevel": job.get('job_seniority_level', ''),
             "companyLinkedinUrl": job.get('company_url', ''),
-            "platform": 'bright_data',
+            "platform": 'bright_data_linkedin',
             "discovery_input": discovery_input, 
             # Extra info for debugging
             "_matched_keyword": matched_keyword
@@ -281,13 +281,12 @@ def parse_brightdata_response(raw: str):
     print("Failed to parse trigger response, got:", raw[:500])
     return None
 
-
 def run_bright_data(job_title: str, location: str):
     """
     a) Triggers the scrape.
     b) If the response is already multiple records (list) -> data is ready,
        return it directly, no polling needed.
-    c) If the response is a single dict with a snapshot_id -> poll until ready,
+    c) If the response is a single dict with a snapshot_id -> auto-poll until ready,
        then fetch and return the final data.
     d) Returns a Python object (list[dict] preferably) -- NEVER a raw JSON string.
     """
@@ -295,9 +294,8 @@ def run_bright_data(job_title: str, location: str):
 
     data = parse_brightdata_response(raw)
     if data is None:
-        return None 
-    
-    
+        return None
+
     # Case: multiple records already returned (JSON array or NDJSON) -> done
     if isinstance(data, list):
         print(f"Got {len(data)} records directly, no polling needed.")
@@ -308,48 +306,39 @@ def run_bright_data(job_title: str, location: str):
         snapshot_id = data.get('snapshot_id')
 
         if not snapshot_id:
-            # dict but no snapshot_id -> nothing to poll, return as-is (wrapped in list
-            # for consistency with downstream code that expects a list of jobs)
             return [data]
 
         while True:
-            check = input('Enter 1 to check status, enter 2 to break: ')
+            status_raw = get_brightdata_snapshot_status(snapshot_id)
+            res = parse_brightdata_response(status_raw)
 
-            if check.strip() == "1":
-                status_raw = get_brightdata_snapshot_status(snapshot_id)
-                res = parse_brightdata_response(status_raw)
-                if res is None or not isinstance(res, dict):
-                    print("Failed to parse status response, got:", status_raw)
-                    continue
+            if res is None or not isinstance(res, dict):
+                print("Failed to parse status response, got:", status_raw)
+                time.sleep(10)
+                continue
 
-                result = wait_for_snapshot_ready(res)
+            result = wait_for_snapshot_ready(res)
 
-                if result == "ready":
-                    print(result)
-                    scraped = get_data(snapshot_id)  # already parsed (list/dict) or None
-                    print("Number of jobs:", len(scraped))  
-                    if scraped is not None:
-                        print("scraped by adarsh")
-                        if isinstance(scraped, dict):
-                            scraped = [scraped]
-                        return scraped
-                    break  # fetch failed, stop looping
-                elif result == "failed":
-                    print("Snapshot failed. Try another location/keyword.")
-                    break
-                else:
-                    print(result)  # "running" or "wait for 30 sec,
-            else:
+            if result == "ready":
+                print(result)
+                scraped = get_data(snapshot_id)  # already parsed (list/dict) or None
+                if scraped is not None:
+                    print("Number of jobs:", len(scraped))
+                    if isinstance(scraped, dict):
+                        scraped = [scraped]
+                    return scraped
+                print("Fetch failed after snapshot was ready.")
+                return None
+
+            elif result == "failed":
+                print("Snapshot failed. Try another location/keyword.")
                 break
+
+            else:
+                print(result)
+                time.sleep(10)
 
         return None
 
-    # Anything else (int, None, etc.) -- unexpected shape
     print("Unexpected data type from trigger response:", type(data))
     return None
-
-
-
-
-
-

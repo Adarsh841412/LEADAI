@@ -1,7 +1,7 @@
 import requests
 import json
 from datetime import datetime, timezone 
-
+import time
 API_KEY = "4b292b93-e065-4ee0-8cdf-31c0f66bb323"
 
 GLASSDOOR_DATASET_ID = "gd_lpfbbndm1xnopbrcr0"
@@ -144,13 +144,12 @@ def parse_brightdata_response_glassdoor(raw: str):
     print("Failed to parse trigger response, got:", raw[:500])
     return None
 
-
 def run_bright_data_glassdoor(job_title: str, country: str, location: str = "Remote"):
     """
     a) Triggers the scrape.
     b) If the response is already multiple records (list) -> data is ready,
        return it directly, no polling needed.
-    c) If the response is a single dict with a snapshot_id -> poll until ready,
+    c) If the response is a single dict with a snapshot_id -> auto-poll until ready,
        then fetch and return the final data.
     d) Returns a Python object (list[dict] preferably) -- NEVER a raw JSON string.
     """
@@ -167,7 +166,7 @@ def run_bright_data_glassdoor(job_title: str, country: str, location: str = "Rem
 
     # Case: single dict -> likely has snapshot_id, needs polling
     if isinstance(data, dict):
-        snapshot_id =data.get('snapshot_id','')
+        snapshot_id = data.get('snapshot_id', '')
 
         if not snapshot_id:
             # dict but no snapshot_id -> nothing to poll, return as-is (wrapped in list
@@ -175,39 +174,42 @@ def run_bright_data_glassdoor(job_title: str, country: str, location: str = "Rem
             return [data]
 
         while True:
-            check = input('Enter 1 to check status, enter 2 to break: ')
+            status_raw = get_brightdata_snapshot_status_glassdoor(snapshot_id)
+            res = parse_brightdata_response_glassdoor(status_raw)
 
-            if check.strip() == "1":
-                status_raw = get_brightdata_snapshot_status_glassdoor(snapshot_id)
-                res = parse_brightdata_response_glassdoor(status_raw)
-                if res is None or not isinstance(res, dict):
-                    print("Failed to parse status response, got:", status_raw)
-                    continue
+            if res is None or not isinstance(res, dict):
+                print("Failed to parse status response, got:", status_raw)
+                time.sleep(10)
+                continue
 
-                result = wait_for_snapshot_ready_glassdoor(res)
+            result = wait_for_snapshot_ready_glassdoor(res)
 
-                if result == "ready":
-                    print(result)
-                    scraped = get_data_glassdoor(snapshot_id)  # already parsed (list/dict) or None
-                    if scraped is not None:
-                        print("Number of jobs:", len(scraped))
-                        if isinstance(scraped, dict):
-                            scraped = [scraped]
-                        return scraped
-                    break  # fetch failed, stop looping
-                elif result == "failed":
-                    print("Snapshot failed. Try another location/keyword.")
-                    break
-                else:
-                    print(result)
-            else:
+            if result == "ready":
+                print(result)
+                scraped = get_data_glassdoor(snapshot_id)  # already parsed (list/dict) or None
+                if scraped is not None:
+                    print("Number of jobs:", len(scraped))
+                    if isinstance(scraped, dict):
+                        scraped = [scraped]
+                    return scraped
+                print("Fetch failed after snapshot was ready.")
+                return None
+
+            elif result == "failed":
+                print("Snapshot failed. Try another location/keyword.")
                 break
+
+            else:
+                print(result)
+                time.sleep(10)
 
         return None
 
     # Anything else (int, None, etc.) -- unexpected shape
     print("Unexpected data type from trigger response:", type(data))
     return None
+
+
 
 
 # def convert_brightdata_to_apify_glassdoor(brightdata_data):

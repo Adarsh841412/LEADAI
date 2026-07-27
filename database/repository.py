@@ -5,15 +5,17 @@ Repository layer for Lead database operations.
 """
 
 from typing import Any
-
+import logging
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from database.models import Lead, LeadStatus
 from datetime import datetime
 from sqlalchemy import or_
 from database.models import MeetingStatus
+from sqlalchemy import select, or_, and_, text
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError, OperationalError
 
-
+logger = logging.getLogger(__name__)
 class LeadRepository:
     """
     Repository responsible for all Lead database operations.
@@ -21,10 +23,142 @@ class LeadRepository:
 
     def __init__(self, db: Session) -> None:
         self.db = db
+    
+    def save_leads(
+    self,
+    jobs: list[dict[str, Any]],
+) -> int:
+        """
+        Save multiple leads.
 
-    # ------------------------------------------------------------------
-    # Private Mapper
-    # ------------------------------------------------------------------
+        Returns:
+            Number of newly inserted leads.
+            
+        Raises:
+            ValueError: If jobs is None or invalid
+            Exception: For database errors (handled by caller)
+        """
+        #  Input validation
+        if jobs is None:
+            logger.warning("jobs is None, returning 0")
+            return 0
+        
+        if not jobs:
+            logger.info("Empty job list provided to save_leads")
+            return 0
+
+        logger.info(f"Processing {len(jobs)} jobs for saving")
+        
+        lead_objects: list[Lead] = []
+        duplicate_count = 0
+        error_count = 0
+        for idx, job in enumerate(jobs):
+            try:
+                #  Validate job exists
+                if not job:
+                    logger.warning(f"Job at index {idx} is None, skipping")
+                    error_count += 1
+                    continue
+                
+                #  Validate jobId exists
+                job_id = job.get("jobId")
+                if not job_id:
+                    logger.warning(f"Job at index {idx} missing jobId, skipping")
+                    error_count += 1
+                    continue
+                
+                #  Check for duplicates (with error handling)
+                try:
+                    if self.job_exists(str(job_id)):
+                        duplicate_count += 1
+                        continue
+                except Exception as e:
+                    logger.error(f"Error checking job existence for {job_id}: {e}")
+                    error_count += 1
+                    continue
+                
+                #  Convert to lead (may raise ValueError)
+                try:
+                    lead = self._to_lead(job)
+                    lead_objects.append(lead)
+                except ValueError as e:
+                    logger.warning(f"Validation error for job {job_id}: {e}")
+                    error_count += 1
+                    continue
+                except Exception as e:
+                    logger.error(f"Error converting job {job_id} to lead: {e}")
+                    error_count += 1
+                    continue
+                    
+            except Exception as e:
+                logger.error(f"Unexpected error processing job at index {idx}: {e}")
+                error_count += 1
+                continue
+
+        if not lead_objects:
+            logger.info(
+                f"No new leads to save. "
+                f"Duplicates: {duplicate_count}, Errors: {error_count}"
+            )
+            return 0
+
+        try:
+            #  Bulk save with transaction
+            self.db.bulk_save_objects(lead_objects)
+            self.db.commit()
+            
+            saved_count = len(lead_objects)
+            logger.info(
+                f"Successfully saved {saved_count} leads. "
+                f"Duplicates skipped: {duplicate_count}, "
+                f"Errors: {error_count}"
+            )
+            return saved_count
+            
+        except Exception as e:
+            #  Rollback on error
+            self.db.rollback()
+            logger.error(f"Database error saving leads: {e}", exc_info=True)
+            raise  # Re-raise for caller to handle
+
+
+    def job_exists(
+        self,
+        job_id: str,
+    ) -> bool:
+        """
+        Check whether a job already exists.
+        
+        Args:
+            job_id: Job ID to check
+            
+        Returns:
+            True if exists, False otherwise
+        """
+        #  Validate input
+        if not job_id:
+            logger.warning("job_id is None or empty, returning False")
+            return False
+        
+        try:
+            stmt = (
+                select(Lead)
+                .where(Lead.job_id == str(job_id))
+            )
+            result = self.db.scalar(stmt)
+            exists = result is not None
+            
+            if exists:
+                logger.debug(f"Job {job_id} already exists")
+            
+            return exists
+            
+        except Exception as e:
+            #  Log error but don't crash
+            logger.error(f"Error checking if job {job_id} exists: {e}")
+            #  Return False as fallback (better to try saving than skip)
+            return False
+
 
     def _to_lead(
         self,
@@ -32,25 +166,106 @@ class LeadRepository:
     ) -> Lead:
         """
         Convert a scraped job dictionary into a Lead ORM object.
-        """
         
+        Args:
+            job: Job dictionary
+            
+        Returns:
+            Lead ORM object
+            
+        Raises:
+            ValueError: If required fields are missing or invalid
+        """
+        #  Validate job is not None
+        if not job:
+            raise ValueError("Job data is required")
+        
+        #  Validate required fields
+        required_fields = ['jobId', 'companyName', 'title', 'jobUrl']
+        missing_fields = []
+        
+        for field in required_fields:
+            value = job.get(field)
+            if value is None or str(value).strip() == '':
+                missing_fields.append(field)
+        
+        if missing_fields:
+            raise ValueError(
+                f"Missing required fields: {', '.join(missing_fields)}"
+            )
+        
+        #  Extract and validate email
         email_guesses = job.get("recruiter", {}).get("emailGuesses", [])
+        email = email_guesses[0] if email_guesses else None
+        
+        #  Basic email validation (if present)
+        if email:
+            import re
+            email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+            if not re.match(email_pattern, str(email)):
+                logger.warning(f"Invalid email format, skipping: {email}")
+                email = None
+        
+        #  Sanitize fields to prevent database errors
+        def sanitize(value, max_length=255, default=""):
+            if value is None:
+                return default
+            sanitized = ' '.join(str(value).strip().split())
+            if len(sanitized) > max_length:
+                logger.warning(f"Truncating field from {len(sanitized)} to {max_length}")
+                sanitized = sanitized[:max_length]
+            return sanitized
+        
+        #  Build lead object
+        try:
+            lead = Lead(
+                job_id=str(job["jobId"]).strip(),
+                company=sanitize(job["companyName"], 255, "Unknown Company"),
+                job_title=sanitize(job["title"], 255, "Unknown Title"),
+                location=sanitize(job.get("location", ""), 255, "Unknown"),
+                job_url=str(job["jobUrl"]).strip(),
+                platform=sanitize(job.get('platform', 'linkedin'), 50, 'linkedin').lower(),
+                description=sanitize(job.get("description", ""), 10000, ""),
+                skills=", ".join(job.get("skills", [])[:20])[:1000],  # Limit to 20 skills, 1000 chars
+                email=email,
+                email_verified=False,
+                status=LeadStatus.NEW,
+                metadata_info=job,
+                email_status="FOUND" if email else "PENDING",
+            )
+            
+            logger.debug(f"Successfully converted job {job['jobId']} to Lead")
+            return lead
+            
+        except Exception as e:
+            logger.error(f"Error creating Lead object for job {job.get('jobId', 'unknown')}: {e}")
+            raise ValueError(f"Failed to convert job to Lead: {str(e)}") from e
 
-        return Lead(
-            job_id=job["jobId"],
-            company=job["companyName"],
-            job_title=job["title"],
-            location=job.get("location"),
-            job_url=job["jobUrl"],
-            platform=job.get('platform','linkedin'),
-            description=job.get("description"),
-            skills=", ".join(job.get("skills", [])),
-            email=email_guesses[0] if email_guesses else None,
-            email_verified=False,
-            status=LeadStatus.NEW,
-            metadata_info=job,
-            email_status="FOUND" if email_guesses else "PENDING",
-        )
+    # def _to_lead(
+    #     self,
+    #     job: dict[str, Any],
+    # ) -> Lead:
+    #     """
+    #     Convert a scraped job dictionary into a Lead ORM object.
+    #     """
+        
+    #     email_guesses = job.get("recruiter", {}).get("emailGuesses", [])
+
+    #     return Lead(
+    #         job_id=job["jobId"],
+    #         company=job["companyName"],
+    #         job_title=job["title"],
+    #         location=job.get("location"),
+    #         job_url=job["jobUrl"],
+    #         platform=job.get('platform','linkedin'),
+    #         description=job.get("description"),
+    #         skills=", ".join(job.get("skills", [])),
+    #         email=email_guesses[0] if email_guesses else None,
+    #         email_verified=False,
+    #         status=LeadStatus.NEW,
+    #         metadata_info=job,
+    #         email_status="FOUND" if email_guesses else "PENDING",
+    #     )
 
 #    create 
     def save_lead(
@@ -74,63 +289,63 @@ class LeadRepository:
 
         return lead
 
-    # bulk create 
-    def save_leads(
-        self,
-        jobs: list[dict[str, Any]],
-    ) -> int:
-        """
-        Save multiple leads.
+    # # bulk create 
+    # def save_leads(
+    #     self,
+    #     jobs: list[dict[str, Any]],
+    # ) -> int:
+    #     """
+    #     Save multiple leads.
 
-        Returns:
-            Number of newly inserted leads.
-        """
+    #     Returns:
+    #         Number of newly inserted leads.
+    #     """
         
 
-        lead_objects: list[Lead] = []
+    #     lead_objects: list[Lead] = []
 
-        for job in jobs:
+    #     for job in jobs:
 
-            if self.job_exists(job["jobId"]):
-                continue
+    #         if self.job_exists(job["jobId"]):
+    #             continue
 
-            lead_objects.append(
-                self._to_lead(job)
-            )
+    #         lead_objects.append(
+    #             self._to_lead(job)
+    #         )
 
-        if not lead_objects:
-            return 0
+    #     if not lead_objects:
+    #         return 0
 
-        try :
-            self.db.bulk_save_objects(
-            lead_objects
-        )
+    #     try :
+    #         self.db.bulk_save_objects(
+    #         lead_objects
+    #     )
 
-            self.db.commit()
+    #         self.db.commit()
 
-            return len(lead_objects)
-        except Exception :
-            self.db.rollback() 
-            raise 
+    #         return len(lead_objects)
+    #     except Exception :
+    #         self.db.rollback() 
+    #         raise 
 
-    # check existence of jobs
+    # # check existence of jobs
     
-    def job_exists(
-        self,
-        job_id: str,
-    ) -> bool:
-        """
-        Check whether a job already exists.
-        """
+    # def job_exists(
+    #     self,
+    #     job_id: str,
+    # ) -> bool:
+    #     """
+    #     Check whether a job already exists.
+    #     """
 
-        stmt = (
-            select(Lead)
-            .where(
-                Lead.job_id == job_id
-            )
-        )
+    #     stmt = (
+    #         select(Lead)
+    #         .where(
+    #             Lead.job_id == job_id
+    #         )
+    #     )
 
-        return self.db.scalar(stmt) is not None
+    #     return self.db.scalar(stmt) is not None
 
 #    get all leads 
 
@@ -192,49 +407,136 @@ class LeadRepository:
 # Connect Workflow
 # ------------------------------------------------------------------
 
-    def get_pending_connections(
-        self,
-    ) -> list[Lead]:
+    # def get_pending_connections(
+    #     self,
+    # ) -> list[Lead]:
+    #     """
+    #     Return all leads that still need email enrichment.
+    #     """
+    #     try:
+
+    #         stmt = (
+    #             select(Lead)
+    #             .where(Lead.email_status == "PENDING")
+    #         )
+
+    #         return list(self.db.scalars(stmt).all())
+    #     except Exception as e:
+    #         print("error in get pending connection repository",e)
+    #         return []
+
+    # database/repository.py
+
+    def get_pending_connections(self) -> list[Lead]:
         """
         Return all leads that still need email enrichment.
+        
+        Returns:
+            List of Lead objects with email_status = "PENDING"
+            Returns empty list on error or if no pending leads found
+            
+        Raises:
+            No exceptions raised (handled internally)
         """
         try:
-
             stmt = (
                 select(Lead)
                 .where(Lead.email_status == "PENDING")
             )
-
-            return list(self.db.scalars(stmt).all())
+            
+            results = list(self.db.scalars(stmt).all())
+            logger.info(f"Found {len(results)} pending connections")
+            return results
+            
+        except SQLAlchemyError as e:
+            logger.error(f"Database error in get_pending_connections: {e}", exc_info=True)
+            return []
+            
         except Exception as e:
-            print("error in get pending connection repository",e)
+            logger.error(f"Unexpected error in get_pending_connections: {e}", exc_info=True)
             return []
 
-
-    def update_company_domain(
-        self,
-        lead_id: int,
-        company_domain: str,
-    ) -> bool:
-        """
-        Update company domain.
-        """
+    # def update_company_domain(
+    #     self,
+    #     lead_id: int,
+    #     company_domain: str,
+    # ) -> bool:
+    #     """
+    #     Update company domain.
+    #     """
         
-        try : 
+    #     try : 
+    #         lead = self.db.get(Lead, lead_id)
+
+    #         if lead is None:
+    #             return False
+
+    #         lead.company_domain = company_domain
+
+    #         self.db.commit()
+
+    #         return True
+
+    #     except Exception as e:
+    #         self.db.rollback() 
+    #         raise 
+       
+       
+    def update_company_domain(
+    self,
+    lead_id: int,
+    company_domain: str,
+) -> bool:
+        """
+        Update company domain for a lead.
+        
+        Args:
+            lead_id: ID of the lead to update
+            company_domain: Company domain to set
+        
+        Returns:
+            True if updated successfully, False if lead not found
+            
+        Raises:
+            ValueError: If lead_id is invalid
+            SQLAlchemyError: For database errors
+        """
+        #  Validate input
+        if not isinstance(lead_id, int) or lead_id <= 0:
+            logger.warning(f"Invalid lead_id: {lead_id}")
+            return False
+        
+        if not company_domain or not str(company_domain).strip():
+            logger.warning(f"Empty company_domain for lead {lead_id}")
+            return False
+        
+        try:
+            #  Get lead
             lead = self.db.get(Lead, lead_id)
-
+            
             if lead is None:
+                logger.warning(f"Lead not found with id: {lead_id}")
                 return False
-
-            lead.company_domain = company_domain
-
+            
+            #  Update domain
+            lead.company_domain = str(company_domain).strip()
+            
+            #  Commit transaction
             self.db.commit()
-
+            
+            logger.info(f"Updated company domain for lead {lead_id}: {company_domain}")
             return True
-
+            
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Database error updating company domain for lead {lead_id}: {e}", exc_info=True)
+            raise
+            
         except Exception as e:
-            self.db.rollback() 
-            raise 
+            self.db.rollback()
+            logger.error(f"Unexpected error updating company domain for lead {lead_id}: {e}", exc_info=True)
+            raise   
+        
         
     def update_email(
         self,
@@ -281,34 +583,112 @@ class LeadRepository:
         return True
 
 
+    # def update_contact(
+    #     self,
+    #     lead_id: int,
+    #     company_domain: str,
+    #     email: str,
+    #     email_verified: bool = False,
+    # ) -> bool:
+    #     """
+    #     Update all enrichment fields in a single transaction.
+    #     """
+    #     try :
+
+    #         lead = self.db.get(Lead, lead_id)
+
+    #         if lead is None:
+    #             return False
+
+    #         lead.company_domain = company_domain
+    #         lead.email = email
+    #         lead.email_verified = email_verified
+    #         lead.email_status = "FOUND"
+
+    #         self.db.commit()
+
+    #         return True
+    #     except Exception as e:
+    #         self.db.rollback() 
+    #         raise 
+    
     def update_contact(
-        self,
-        lead_id: int,
-        company_domain: str,
-        email: str,
-        email_verified: bool = False,
-    ) -> bool:
+    self,
+    lead_id: int,
+    company_domain: str,
+    email: str,
+    email_verified: bool = False,
+) -> bool:
         """
         Update all enrichment fields in a single transaction.
+        
+        Args:
+            lead_id: ID of the lead to update
+            company_domain: Company domain to set
+            email: Email address to set
+            email_verified: Whether email is verified (default: False)
+        
+        Returns:
+            True if updated successfully, False if lead not found
+            
+        Raises:
+            ValueError: If lead_id is invalid or email format is invalid
+            SQLAlchemyError: For database errors
         """
-        try :
-
+        #  Validate lead_id
+        if not isinstance(lead_id, int) or lead_id <= 0:
+            logger.warning(f"Invalid lead_id: {lead_id}")
+            return False
+        
+        #  Validate company_domain
+        if not company_domain or not str(company_domain).strip():
+            logger.warning(f"Empty company_domain for lead {lead_id}")
+            return False
+        
+        #  Validate email
+        if not email or not str(email).strip():
+            logger.warning(f"Empty email for lead {lead_id}")
+            return False
+        
+        #  Validate email format (basic)
+        import re
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, str(email).strip()):
+            logger.warning(f"Invalid email format for lead {lead_id}: {email}")
+            return False
+        
+        try:
+            #  Get lead
             lead = self.db.get(Lead, lead_id)
-
+            
             if lead is None:
+                logger.warning(f"Lead not found with id: {lead_id}")
                 return False
-
-            lead.company_domain = company_domain
-            lead.email = email
+            
+            #  Update fields
+            lead.company_domain = str(company_domain).strip()
+            lead.email = str(email).strip()
             lead.email_verified = email_verified
             lead.email_status = "FOUND"
-
+            
+            #  Commit transaction
             self.db.commit()
-
+            
+            logger.info(f"Updated contact for lead {lead_id}: {email} (verified: {email_verified})")
             return True
+            
+        except SQLAlchemyError as e:
+            self.db.rollback()
+            logger.error(f"Database error updating contact for lead {lead_id}: {e}", exc_info=True)
+            raise
+            
         except Exception as e:
-            self.db.rollback() 
-            raise 
+            self.db.rollback()
+            logger.error(f"Unexpected error updating contact for lead {lead_id}: {e}", exc_info=True)
+            raise
+        
+    
+    
     
     # outreach workflow 
     
